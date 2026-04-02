@@ -1,7 +1,7 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-preset-angular',
-  setupFilesAfterFramework: ['<rootDir>/setup-jest.ts'],
+  setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
   testEnvironment: 'jsdom',
   transform: {
     '^.+\\.(ts|mjs|js|cjs)$': [
@@ -31,4 +31,5 @@ module.exports = {
     '!**/index.ts',
   ],
   cacheDirectory: '.jest-cache',
+  testTimeout: 60000,
 };

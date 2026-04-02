@@ -103,6 +103,192 @@ describe('Messaging Integration — thread & message flow', () => {
   });
 });
 
+describe('Messaging Integration — admin thread visibility', () => {
+  let service: MessagingService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    service = TestBed.inject(MessagingService);
+    await db.open();
+    await new Promise(r => setTimeout(r, 200));
+    await db.threads.clear();
+    await db.messages.clear();
+    await db.auditLogs.clear();
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('admin getThreads returns threads user is not a participant of', async () => {
+    await service.createThread([10, 11], 'Thread for others');
+    await service.createThread([1, 2], 'Admin thread');
+
+    // Admin userId=1 sees both threads (including one they are not in)
+    const adminThreads = await service.getThreads(1, 'admin');
+    expect(adminThreads.length).toBe(2);
+  });
+
+  it('resident getThreads returns only their own threads', async () => {
+    await service.createThread([5, 6], 'Resident thread');
+    await service.createThread([7, 8], 'Other thread');
+
+    const residentThreads = await service.getThreads(5, 'resident');
+    expect(residentThreads.length).toBe(1);
+    expect(residentThreads[0].participantIds).toContain(5);
+  });
+
+  it('getMessages writes MESSAGE_ADMIN_ACCESS when admin is not a participant', async () => {
+    const thread = await service.createThread([10, 11], 'Private');
+    await service.sendMessage({ threadId: thread.id!, senderId: 10, senderRole: 'resident', rawBody: 'private note', type: 'direct' });
+
+    // Admin id=99 — not a participant
+    await service.getMessages(thread.id!, 99, 'admin');
+
+    const logs = await db.auditLogs.toArray();
+    const entry = logs.find(l => l.action === 'MESSAGE_ADMIN_ACCESS' && l.actorId === 99);
+    expect(entry).toBeDefined();
+    expect(entry!.targetId).toBe(thread.id);
+  });
+
+  it('getMessages does NOT write MESSAGE_ADMIN_ACCESS when admin IS a participant', async () => {
+    const adminId = 1;
+    const thread = await service.createThread([adminId, 2], 'Admin Chat');
+    await service.sendMessage({ threadId: thread.id!, senderId: 2, senderRole: 'resident', rawBody: 'hello', type: 'direct' });
+
+    await service.getMessages(thread.id!, adminId, 'admin');
+
+    const logs = await db.auditLogs.toArray();
+    const entry = logs.find(l => l.action === 'MESSAGE_ADMIN_ACCESS' && l.actorId === adminId);
+    expect(entry).toBeUndefined();
+  });
+});
+
+describe('Messaging Integration — createAnnouncement', () => {
+  let service: MessagingService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    service = TestBed.inject(MessagingService);
+    await db.open();
+    await new Promise(r => setTimeout(r, 200));
+    await db.threads.clear();
+    await db.messages.clear();
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('createAnnouncement creates a thread and announcement-type message', async () => {
+    const { thread, message } = await service.createAnnouncement({
+      senderId: 1,
+      senderRole: 'admin',
+      subject: 'Community Update',
+      rawBody: 'The pool will be closed this weekend.',
+    });
+
+    expect(thread.id).toBeDefined();
+    expect(thread.subject).toBe('Community Update');
+    expect(thread.participantIds).toEqual([]);
+
+    expect(message.id).toBeDefined();
+    expect(message.type).toBe('announcement');
+    expect(message.body).toContain('pool');
+  });
+
+  it('getAnnouncements returns threads with announcement messages', async () => {
+    await service.createAnnouncement({
+      senderId: 1,
+      senderRole: 'admin',
+      subject: 'Announcement 1',
+      rawBody: 'First announcement.',
+    });
+    await service.createAnnouncement({
+      senderId: 1,
+      senderRole: 'admin',
+      subject: 'Announcement 2',
+      rawBody: 'Second announcement.',
+    });
+
+    const announcements = await service.getAnnouncements();
+    expect(announcements.length).toBe(2);
+  });
+});
+
+describe('Messaging Integration — createTemplate', () => {
+  let service: MessagingService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    service = TestBed.inject(MessagingService);
+    await db.open();
+    await new Promise(r => setTimeout(r, 200));
+    await db.messageTemplates.clear();
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('stores template and retrieves it by id', async () => {
+    const tmpl = await service.createTemplate({
+      name:      'Move-In Welcome',
+      subject:   'Welcome!',
+      body:      'We are pleased to welcome you.',
+      category:  'onboarding',
+      createdBy: 1,
+    });
+
+    expect(tmpl.id).toBeDefined();
+    const fetched = await service.getTemplate(tmpl.id!);
+    expect(fetched).toBeDefined();
+    expect(fetched!.name).toBe('Move-In Welcome');
+    expect(fetched!.category).toBe('onboarding');
+  });
+
+  it('getTemplates returns all templates', async () => {
+    await service.createTemplate({ name: 'T1', subject: 'S1', body: 'B1', category: 'cat', createdBy: 1 });
+    await service.createTemplate({ name: 'T2', subject: 'S2', body: 'B2', category: 'cat', createdBy: 1 });
+
+    const templates = await service.getTemplates();
+    expect(templates.length).toBe(2);
+  });
+
+  it('masks PII in template body before storage', async () => {
+    const tmpl = await service.createTemplate({
+      name:      'Contact Template',
+      subject:   'Contact Info',
+      body:      'Email support@harborpoint.local or call 555-999-0000',
+      category:  'support',
+      createdBy: 1,
+    });
+
+    expect(tmpl.body).not.toContain('support@harborpoint.local');
+    expect(tmpl.body).not.toContain('555-999-0000');
+    expect(tmpl.body).toContain('[EMAIL REDACTED]');
+    expect(tmpl.body).toContain('[PHONE REDACTED]');
+  });
+});
+
 describe('Messaging Integration — masking policy', () => {
   it('redacts phone number in message body', () => {
     const masked = maskSensitiveContent('Call me at 555-867-5309 ok?');

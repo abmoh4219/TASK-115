@@ -427,7 +427,7 @@ export class DbService extends Dexie {
   // Import / Export Helpers
   // =====================================================
 
-  async exportAll(): Promise<Record<string, unknown[]>> {
+  async exportAll(): Promise<Record<string, unknown>> {
     const [
       buildings, units, rooms, occupancies, residents,
       documents, messages, threads, enrollments, courses,
@@ -470,12 +470,13 @@ export class DbService extends Dexie {
       'consentRecords', 'zeroResultsLog', 'contentPolicies', 'messageTemplates',
     ];
 
-    await this.transaction('rw',
+    const allTables = [
       this.buildings, this.units, this.rooms, this.occupancies, this.residents,
       this.documents, this.messages, this.threads, this.enrollments, this.courses,
       this.courseRounds, this.auditLogs, this.searchIndex, this.searchDictionary,
       this.consentRecords, this.zeroResultsLog, this.contentPolicies, this.messageTemplates,
-      async () => {
+    ];
+    await this.transaction('rw', allTables, async () => {
         for (const tableName of tables) {
           const records = data[tableName];
           if (!Array.isArray(records)) continue;

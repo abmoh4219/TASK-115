@@ -7,8 +7,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ResidentService } from '../../core/services/resident.service';
 import { PropertyService } from '../../core/services/property.service';
+import { DocumentService } from '../../core/services/document.service';
 import { DbService } from '../../core/services/db.service';
 import { Resident, Occupancy, Room, Unit, Building } from '../../core/services/db.service';
+import { DocumentUploadComponent } from '../documents/document-upload.component';
+import { ToastService } from '../../shared/components/toast/toast.service';
 
 interface ProfileOccupancy {
   occupancy: Occupancy;
@@ -24,7 +27,7 @@ interface ProfileOccupancy {
 @Component({
   selector: 'app-my-profile',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, DocumentUploadComponent],
   template: `
     <div class="profile-page">
 
@@ -178,6 +181,47 @@ interface ProfileOccupancy {
           </div>
 
         </div>
+
+        <!-- ── Consent revocation section ───────────── -->
+        <div class="consent-section" [class.consent-section--granted]="resident.consentGiven" [class.consent-section--revoked]="!resident.consentGiven">
+          <div class="consent-section__header">
+            <div>
+              <h3 class="consent-section__title">Document Consent</h3>
+              <p class="consent-section__desc">
+                {{ resident.consentGiven
+                   ? 'You have granted consent to store and review your documents.'
+                   : 'Consent has not been granted or has been revoked. Documents are hidden from staff.' }}
+              </p>
+            </div>
+            <div class="consent-section__actions">
+              <span class="consent-status-chip" [class.consent-status-chip--granted]="resident.consentGiven" [class.consent-status-chip--revoked]="!resident.consentGiven">
+                {{ resident.consentGiven ? 'Consent Active' : 'Consent Revoked' }}
+              </span>
+              <button
+                class="btn-consent"
+                [class.btn-consent--revoke]="resident.consentGiven"
+                [class.btn-consent--grant]="!resident.consentGiven"
+                [disabled]="consentChanging"
+                (click)="toggleConsent()"
+              >
+                {{ consentChanging ? 'Please wait…' : (resident.consentGiven ? 'Revoke Consent' : 'Grant Consent') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Documents section ─────────────────────── -->
+        <div class="docs-section">
+          <h3 class="docs-section__title">My Documents</h3>
+          <p class="docs-section__sub">Upload ID, lease addenda, or other required documents.</p>
+          <app-document-upload
+            [residentId]="resident.id ?? null"
+            [actorId]="0"
+            actorRole="resident"
+            [readonly]="false"
+          ></app-document-upload>
+        </div>
+
       </ng-container>
 
     </div>
@@ -382,6 +426,114 @@ interface ProfileOccupancy {
       line-height: 1.5;
     }
 
+    // ── Consent revocation section ─────────────────
+
+    .consent-section {
+      border-radius: 12px;
+      border-left: 4px solid #f59e0b;
+      background: #fffbeb;
+      padding: 1rem 1.25rem;
+      margin-top: 1.25rem;
+
+      &--granted {
+        border-left-color: #10b981;
+        background: #f0fdf4;
+      }
+
+      &--revoked {
+        border-left-color: #f59e0b;
+        background: #fffbeb;
+      }
+    }
+
+    .consent-section__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .consent-section__title {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 0.25rem;
+    }
+
+    .consent-section__desc {
+      font-size: 0.8125rem;
+      color: #6b7280;
+      margin: 0;
+      max-width: 480px;
+    }
+
+    .consent-section__actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .consent-status-chip {
+      padding: 0.125rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+
+      &--granted { background: #d1fae5; color: #065f46; }
+      &--revoked  { background: #fef3c7; color: #92400e; }
+    }
+
+    .btn-consent {
+      padding: 0.375rem 0.875rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 150ms;
+      white-space: nowrap;
+
+      &--revoke {
+        border: 1px solid #fca5a5;
+        background: #fff;
+        color: #dc2626;
+
+        &:hover:not(:disabled) { background: #fef2f2; }
+      }
+
+      &--grant {
+        border: none;
+        background: #2dd4bf;
+        color: #fff;
+        box-shadow: 0 1px 3px rgba(45,212,191,0.4);
+
+        &:hover:not(:disabled) { background: #0d9488; }
+      }
+
+      &:disabled { opacity: 0.5; cursor: default; }
+    }
+
+    // ── Documents section ──────────────────────────
+
+    .docs-section {
+      margin-top: 1.5rem;
+    }
+
+    .docs-section__title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 0.25rem;
+    }
+
+    .docs-section__sub {
+      font-size: 0.8125rem;
+      color: #6b7280;
+      margin: 0 0 1rem;
+    }
+
     // ── Skeleton ───────────────────────────────────
 
     @keyframes shimmer {
@@ -444,9 +596,10 @@ interface ProfileOccupancy {
 })
 export class MyProfileComponent implements OnInit {
 
-  loading      = true;
-  resident:    Resident | null = null;
-  occupancyCtx: ProfileOccupancy | null = null;
+  loading        = true;
+  resident:      Resident | null = null;
+  occupancyCtx:  ProfileOccupancy | null = null;
+  consentChanging = false;
 
   private readonly AVATAR_COLORS = [
     '#1e3a5f', '#0d9488', '#7c3aed', '#db2777',
@@ -456,12 +609,37 @@ export class MyProfileComponent implements OnInit {
   constructor(
     private residentService: ResidentService,
     private propertyService: PropertyService,
+    private docService:      DocumentService,
     private db:  DbService,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
     this.loadProfile();
+  }
+
+  async toggleConsent(): Promise<void> {
+    if (!this.resident?.id) return;
+    this.consentChanging = true;
+    this.cdr.markForCheck();
+    try {
+      if (this.resident.consentGiven) {
+        await this.docService.revokeConsent(this.resident.id, 0, 'resident');
+        this.toast.show('Consent revoked. Your documents are now hidden from staff.', 'info');
+      } else {
+        await this.docService.grantConsent(this.resident.id, 0, 'resident');
+        this.toast.show('Consent granted. You can now upload documents.', 'success');
+      }
+      // Refresh resident record
+      const updated = await this.residentService.getResident(this.resident.id);
+      if (updated) this.resident = updated;
+    } catch {
+      this.toast.show('Failed to update consent. Please try again.', 'error');
+    } finally {
+      this.consentChanging = false;
+      this.cdr.markForCheck();
+    }
   }
 
   private async loadProfile(): Promise<void> {

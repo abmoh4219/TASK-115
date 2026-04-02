@@ -50,9 +50,9 @@ async function createComponent(
 
   const fixture = TestBed.createComponent(TableComponent);
   const component = fixture.componentInstance;
-  component.columns = columns;
-  component.data = data;
-  component.loading = loading;
+  fixture.componentRef.setInput('columns', columns);
+  fixture.componentRef.setInput('data', data);
+  fixture.componentRef.setInput('loading', loading);
   fixture.detectChanges();
   return { fixture, component };
 }
@@ -298,8 +298,8 @@ describe('TableComponent — empty state', () => {
   });
 
   it('shows custom emptyMessage', async () => {
-    const { fixture, component } = await createComponent([]);
-    component.emptyMessage = 'No residents found';
+    const { fixture } = await createComponent([]);
+    fixture.componentRef.setInput('emptyMessage', 'No residents found');
     fixture.detectChanges();
     const msg = fixture.debugElement.query(By.css('.hp-table__empty-msg'));
     expect(msg?.nativeElement.textContent.trim()).toBe('No residents found');

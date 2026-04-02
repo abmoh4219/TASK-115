@@ -183,9 +183,8 @@ describe('AuditAction enum', () => {
       'ANOMALY_FLAGGED', 'SESSION_LOCKED',
     ];
     for (const action of required) {
-      expect(AuditAction[action as keyof typeof AuditAction])
-        .withContext(`AuditAction.${action}`)
-        .toBe(action);
+      // context: AuditAction.${action}
+      expect(AuditAction[action as keyof typeof AuditAction]).toBe(action);
     }
   });
 });

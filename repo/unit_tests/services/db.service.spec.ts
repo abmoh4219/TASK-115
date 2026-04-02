@@ -130,6 +130,6 @@ describe('DbService — stores', () => {
 
   it('exportAll includes _meta.version', async () => {
     const snapshot = await service.exportAll();
-    expect((snapshot._meta as Record<string, unknown>)['version']).toBe(1);
+    expect((snapshot['_meta'] as Record<string, unknown>)['version']).toBe(1);
   });
 });

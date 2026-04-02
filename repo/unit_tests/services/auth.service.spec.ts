@@ -3,7 +3,7 @@
  * Tests: role selection, hasRole, lockSession, inactivity timer
  */
 
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick, flushMicrotasks } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { AuthService, UserRole } from '../../src/app/core/services/auth.service';
 import { CryptoService } from '../../src/app/core/services/crypto.service';
@@ -14,7 +14,7 @@ import { CryptoService } from '../../src/app/core/services/crypto.service';
 
 function buildAuthService(): AuthService {
   TestBed.configureTestingModule({
-    imports: [RouterTestingModule],
+    imports: [RouterTestingModule.withRoutes([{ path: '**', redirectTo: '' }])],
     providers: [AuthService, CryptoService],
   });
   return TestBed.inject(AuthService);
@@ -70,7 +70,7 @@ describe('AuthService.selectRole', () => {
       TestBed.resetTestingModule();
       service = buildAuthService();
       const ok = await service.selectRole(role, 'harborpoint2024');
-      expect(ok).withContext(`role ${role}`).toBe(true);
+      expect(ok).toBe(true); // role: `${role}`
       service.ngOnDestroy();
     }
   });
@@ -183,8 +183,15 @@ describe('AuthService inactivity timer', () => {
     expect(service.getInactivityTimer()).toBeNull();
   });
 
-  it('locks session after 30 minutes of inactivity', fakeAsync(async () => {
-    await service.selectRole('admin', 'harborpoint2024');
+  it('locks session after 30 minutes of inactivity', fakeAsync(() => {
+    // Set logged-in state and start the inactivity timer WITHIN the fakeAsync
+    // zone so that the setTimeout is intercepted and controllable via tick().
+    // (Using await/selectRole here would escape the zone via native WebCrypto promises.)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any)._state$.next({ role: 'admin', isLocked: false, isLoggedIn: true });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).resetInactivityTimer();
+
     expect(service.isLoggedIn()).toBe(true);
 
     // Advance time by 30 minutes

@@ -85,7 +85,7 @@ export class SearchService {
     const terms = [query];
     const lower = query.toLowerCase().trim();
 
-    // Look up in search dictionary
+    // Direct lookup: query matches a dictionary term
     const dictEntry = await this.db.searchDictionary
       .filter(d => d.term.toLowerCase() === lower)
       .first();
@@ -94,6 +94,15 @@ export class SearchService {
       terms.push(...dictEntry.synonyms);
       // Apply corrections (use corrected forms as additional terms)
       terms.push(...dictEntry.corrections);
+    } else {
+      // Reverse lookup: query matches a synonym of some term
+      const reverseEntry = await this.db.searchDictionary
+        .filter(d => d.synonyms.some(s => s.toLowerCase() === lower))
+        .first();
+      if (reverseEntry) {
+        terms.push(reverseEntry.term);
+        terms.push(...reverseEntry.synonyms);
+      }
     }
 
     return [...new Set(terms)];

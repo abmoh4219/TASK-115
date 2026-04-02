@@ -14,6 +14,7 @@ import { DrawerComponent } from '../../shared/components/drawer/drawer.component
 import { InputComponent } from '../../shared/components/forms/input.component';
 import { SelectComponent, SelectOption } from '../../shared/components/forms/select.component';
 import { TextareaComponent } from '../../shared/components/forms/textarea.component';
+import { DocumentUploadComponent } from '../documents/document-upload.component';
 
 import { Resident, AuditLog, Occupancy, Room, Unit, Building, ResidentNote } from '../../core/services/db.service';
 import { ResidentService, UpdateResidentData } from '../../core/services/resident.service';
@@ -43,6 +44,7 @@ export interface OccupancyContext {
     CommonModule, ReactiveFormsModule,
     MatTabsModule, MatIconModule, MatButtonModule, MatTooltipModule,
     DrawerComponent, InputComponent, SelectComponent, TextareaComponent,
+    DocumentUploadComponent,
   ],
   template: `
     <app-drawer
@@ -326,17 +328,13 @@ export interface OccupancyContext {
 
           <!-- ═══ TAB 2: Documents ═══════════════════ -->
           <mat-tab label="Documents">
-            <div class="tab-content tab-content--placeholder">
-              <div class="placeholder-state">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" class="placeholder-icon">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="#d1d5db" stroke-width="1.5"/>
-                  <polyline points="14 2 14 8 20 8" stroke="#d1d5db" stroke-width="1.5"/>
-                  <line x1="12" y1="18" x2="12" y2="12" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
-                  <line x1="9" y1="15" x2="15" y2="15" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-                <p class="placeholder-title">Documents</p>
-                <p class="placeholder-sub">Available in Phase 5 — Document Management</p>
-              </div>
+            <div class="tab-content">
+              <app-document-upload
+                [residentId]="residentId"
+                [actorId]="0"
+                [actorRole]="currentRole"
+                [readonly]="!canEdit"
+              ></app-document-upload>
             </div>
           </mat-tab>
 

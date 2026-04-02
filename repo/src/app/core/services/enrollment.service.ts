@@ -21,12 +21,6 @@ export class EnrollmentService {
   // --------------------------------------------------
 
   async enroll(residentId: number, roundId: number, actorRole: string): Promise<EnrollmentResult> {
-    const anomalyKey = `${residentId}-${roundId}`;
-    const isAnomaly = this.anomaly.trackRegistrationAttempt(anomalyKey);
-    if (isAnomaly) {
-      return { success: false, reason: 'ANOMALY_DETECTED' };
-    }
-
     const round = await this.db.courseRounds.get(roundId);
     if (!round) return { success: false, reason: 'ROUND_NOT_FOUND' };
     if (round.status !== 'open') return { success: false, reason: 'ROUND_NOT_OPEN' };
@@ -34,11 +28,18 @@ export class EnrollmentService {
     const now = new Date();
     if (now > round.addCutoffAt) return { success: false, reason: 'ADD_CUTOFF_PASSED' };
 
-    // Check duplicate enrollment
+    // Check duplicate enrollment before anomaly tracking — a re-submission by an
+    // already-enrolled resident is not a security anomaly, just a duplicate request.
     const existing = await this.db.enrollments
       .filter(e => e.residentId === residentId && e.roundId === roundId && e.status !== 'dropped')
       .first();
     if (existing) return { success: false, reason: 'ALREADY_ENROLLED' };
+
+    const anomalyKey = `${residentId}-${roundId}`;
+    const isAnomaly = this.anomaly.trackRegistrationAttempt(anomalyKey);
+    if (isAnomaly) {
+      return { success: false, reason: 'ANOMALY_DETECTED' };
+    }
 
     // Check prerequisites
     const prereqResult = await this.checkPrerequisites(residentId, round.courseId);
