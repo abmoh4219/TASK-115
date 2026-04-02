@@ -16,11 +16,12 @@ import { SelectComponent, SelectOption } from '../../shared/components/forms/sel
 import { TextareaComponent } from '../../shared/components/forms/textarea.component';
 import { DocumentUploadComponent } from '../documents/document-upload.component';
 
-import { Resident, AuditLog, Occupancy, Room, Unit, Building, ResidentNote } from '../../core/services/db.service';
+import { Resident, AuditLog, Occupancy, Room, Unit, Building, ResidentNote, Enrollment, EnrollmentHistory } from '../../core/services/db.service';
 import { ResidentService, UpdateResidentData } from '../../core/services/resident.service';
 import { PropertyService, ReasonCode } from '../../core/services/property.service';
 import { DbService } from '../../core/services/db.service';
 import { UserRole } from '../../core/services/auth.service';
+import { EnrollmentService } from '../../core/services/enrollment.service';
 
 // =====================================================
 // Types
@@ -340,17 +341,59 @@ export interface OccupancyContext {
 
           <!-- ═══ TAB 3: Enrollment ══════════════════ -->
           <mat-tab label="Enrollment">
-            <div class="tab-content tab-content--placeholder">
-              <div class="placeholder-state">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" class="placeholder-icon">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#d1d5db" stroke-width="1.5"/>
-                  <line x1="16" y1="2" x2="16" y2="6" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
-                  <line x1="8" y1="2" x2="8" y2="6" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
-                  <line x1="3" y1="10" x2="21" y2="10" stroke="#d1d5db" stroke-width="1.5"/>
-                </svg>
-                <p class="placeholder-title">Enrollment</p>
-                <p class="placeholder-sub">Available in Phase 8 — Course Registration</p>
-              </div>
+            <div class="tab-content">
+
+              <!-- Empty state -->
+              <ng-container *ngIf="enrollments.length === 0">
+                <div class="placeholder-state" style="padding-top:2rem">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" class="placeholder-icon">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#d1d5db" stroke-width="1.5"/>
+                    <line x1="16" y1="2" x2="16" y2="6" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="8" y1="2" x2="8" y2="6" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/>
+                    <line x1="3" y1="10" x2="21" y2="10" stroke="#d1d5db" stroke-width="1.5"/>
+                  </svg>
+                  <p class="placeholder-title">No Enrollments</p>
+                  <p class="placeholder-sub">This resident has no course enrollments yet.</p>
+                </div>
+              </ng-container>
+
+              <!-- Enrollment timeline -->
+              <ng-container *ngIf="enrollments.length > 0">
+                <div class="enroll-list">
+                  <div class="enroll-card" *ngFor="let enroll of enrollments">
+
+                    <!-- Card header -->
+                    <div class="enroll-card__header">
+                      <span class="enroll-status-badge enroll-status-badge--{{ enroll.status }}">
+                        {{ enroll.status | titlecase }}
+                      </span>
+                      <span class="enroll-meta">Course #{{ enroll.courseId }} · Round #{{ enroll.roundId }}</span>
+                    </div>
+
+                    <!-- Vertical timeline -->
+                    <div class="enroll-timeline" *ngIf="enrollmentHistories.get(enroll.id!) as history">
+                      <div class="enroll-timeline__item" *ngFor="let entry of history; let last = last">
+                        <div class="enroll-timeline__track">
+                          <div class="enroll-timeline__node"></div>
+                          <div class="enroll-timeline__line" *ngIf="!last"></div>
+                        </div>
+                        <div class="enroll-timeline__body">
+                          <span class="enroll-action-chip enroll-action-chip--{{ entry.status }}">
+                            {{ entry.status | titlecase }}
+                            <ng-container *ngIf="entry.reason"> · {{ entry.reason }}</ng-container>
+                          </span>
+                          <span class="enroll-time">{{ entry.changedAt | date:'MMM d, y, h:mm a' }}</span>
+                          <span class="enroll-actor" *ngIf="entry.changedBy === 0">System</span>
+                          <span class="enroll-actor" *ngIf="entry.changedBy === resident?.id">You</span>
+                          <span class="enroll-actor" *ngIf="entry.changedBy !== 0 && entry.changedBy !== resident?.id">Admin</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </ng-container>
+
             </div>
           </mat-tab>
 
@@ -1051,6 +1094,119 @@ export interface OccupancyContext {
       margin: 0;
     }
 
+    // ── Enrollment tab ─────────────────────────────
+
+    .enroll-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .enroll-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 0.875rem 1rem;
+      background: #fff;
+    }
+
+    .enroll-card__header {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      margin-bottom: 0.875rem;
+    }
+
+    .enroll-status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+
+      &--enrolled   { background: #d1fae5; color: #065f46; }
+      &--waitlisted { background: #fef3c7; color: #92400e; }
+      &--dropped    { background: #fee2e2; color: #991b1b; }
+      &--completed  { background: #e0e7ff; color: #3730a3; }
+    }
+
+    .enroll-meta {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+    // Vertical timeline
+
+    .enroll-timeline {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .enroll-timeline__item {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .enroll-timeline__track {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 16px;
+    }
+
+    .enroll-timeline__node {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #2dd4bf;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px #2dd4bf;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    .enroll-timeline__line {
+      width: 2px;
+      flex: 1;
+      background: #e5e7eb;
+      min-height: 24px;
+      margin: 4px 0;
+    }
+
+    .enroll-timeline__body {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.375rem;
+      padding-bottom: 1rem;
+    }
+
+    .enroll-action-chip {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+
+      &--enrolled   { background: #d1fae5; color: #065f46; }
+      &--waitlisted { background: #fef3c7; color: #92400e; }
+      &--dropped    { background: #fee2e2; color: #991b1b; }
+      &--completed  { background: #e0e7ff; color: #3730a3; }
+    }
+
+    .enroll-time {
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    .enroll-actor {
+      font-size: 0.75rem;
+      color: #6b7280;
+      font-style: italic;
+    }
+
     // ── Skeleton ───────────────────────────────────
 
     .skeleton-wrap {
@@ -1120,6 +1276,10 @@ export class ResidentDrawerComponent implements OnChanges {
   activeOccCtx:   OccupancyContext | null = null;
   occupancyHistory: Occupancy[] = [];
 
+  // Enrollment tab
+  enrollments:    Enrollment[] = [];
+  enrollmentHistories: Map<number, EnrollmentHistory[]> = new Map();
+
   // Profile tab
   editMode        = false;
   savingProfile   = false;
@@ -1143,11 +1303,12 @@ export class ResidentDrawerComponent implements OnChanges {
   ];
 
   constructor(
-    private residentService: ResidentService,
-    private propertyService: PropertyService,
-    private db:              DbService,
-    private fb:              FormBuilder,
-    private cdr:             ChangeDetectorRef,
+    private residentService:  ResidentService,
+    private propertyService:  PropertyService,
+    private db:               DbService,
+    private enrollmentService: EnrollmentService,
+    private fb:               FormBuilder,
+    private cdr:              ChangeDetectorRef,
   ) {
     this.editForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -1180,14 +1341,25 @@ export class ResidentDrawerComponent implements OnChanges {
     this.cdr.markForCheck();
 
     try {
-      const [resident, log, activeOcc] = await Promise.all([
+      const [resident, log, activeOcc, enrollments] = await Promise.all([
         this.residentService.getResident(id),
         this.residentService.getChangeLog(id),
         this.propertyService.getActiveOccupancy(id),
+        this.enrollmentService.getEnrollmentsForResident(id),
       ]);
 
       this.resident  = resident ?? null;
       this.changeLog = log;
+      this.enrollments = enrollments;
+
+      // Load history snapshots for each enrollment
+      const histMap = new Map<number, EnrollmentHistory[]>();
+      await Promise.all(enrollments.map(async e => {
+        if (e.id != null) {
+          histMap.set(e.id, e.historySnapshot ?? []);
+        }
+      }));
+      this.enrollmentHistories = histMap;
 
       if (activeOcc) {
         const [room, history] = await Promise.all([
@@ -1221,6 +1393,8 @@ export class ResidentDrawerComponent implements OnChanges {
     this.revealPhone    = false;
     this.showAddNote    = false;
     this.profileWarnings = [];
+    this.enrollments     = [];
+    this.enrollmentHistories = new Map();
   }
 
   // --------------------------------------------------

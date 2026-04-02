@@ -1,14 +1,19 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { Subscription, filter } from 'rxjs';
 import { AuthService, UserRole } from './core/services/auth.service';
 import { MessagingService } from './core/services/messaging.service';
+import { AnomalyService, AnomalyEvent } from './core/services/anomaly.service';
 import { ToastComponent } from './shared/components/toast/toast.component';
 import { BadgeComponent } from './shared/components/badge/badge.component';
+import { ModalComponent } from './shared/components/modal/modal.component';
 
 interface NavItem {
   path: string;
@@ -44,13 +49,50 @@ const HIDDEN_SIDEBAR_ROUTES = ['/login', '/unauthorized'];
   selector: 'app-root',
   standalone: true,
   imports: [
-    CommonModule, RouterModule,
+    CommonModule, FormsModule, RouterModule,
     MatIconModule, MatButtonModule, MatTooltipModule,
-    ToastComponent, BadgeComponent,
+    MatInputModule, MatFormFieldModule,
+    ToastComponent, BadgeComponent, ModalComponent,
   ],
   template: `
     <!-- Toast notification stack -->
     <app-toast></app-toast>
+
+    <!-- Re-auth modal (anomaly detection) -->
+    <app-modal
+      [open]="reAuthOpen"
+      type="warning"
+      title="Unusual Activity Detected"
+      confirmLabel="Verify Identity"
+      [loading]="reAuthLoading"
+      [confirmDisabled]="!reAuthPassword"
+      (confirmed)="onReAuthConfirm()"
+      (cancelled)="onReAuthCancel()"
+    >
+      <div class="reauth-body">
+        <div class="reauth-icon-wrap">
+          <mat-icon class="reauth-shield">shield</mat-icon>
+        </div>
+        <p class="reauth-message">
+          Suspicious activity was detected in your session.
+          Please re-enter your password to continue.
+        </p>
+        <p *ngIf="reAuthAttemptsLeft < 3" class="reauth-attempts">
+          {{ reAuthAttemptsLeft }} attempt{{ reAuthAttemptsLeft !== 1 ? 's' : '' }} remaining
+        </p>
+        <mat-form-field appearance="outline" class="reauth-field">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            type="password"
+            [(ngModel)]="reAuthPassword"
+            (keydown.enter)="onReAuthConfirm()"
+            autocomplete="current-password"
+          />
+        </mat-form-field>
+        <p *ngIf="reAuthError" class="reauth-error">{{ reAuthError }}</p>
+      </div>
+    </app-modal>
 
     <!-- Login / Unauthorized: full screen, no sidebar -->
     <ng-container *ngIf="showSidebar; else fullscreen">
@@ -290,6 +332,22 @@ const HIDDEN_SIDEBAR_ROUTES = ['/login', '/unauthorized'];
       overflow-y: auto;
       background: var(--hp-bg);
     }
+
+    /* ── Re-auth modal body ────────────────────── */
+    .reauth-body {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 0.75rem; padding: 0.5rem 0;
+    }
+    .reauth-icon-wrap {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(245,158,11,0.12);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .reauth-shield { color: #F59E0B; font-size: 28px; width: 28px; height: 28px; }
+    .reauth-message { margin: 0; color: #475569; font-size: 0.9rem; max-width: 320px; }
+    .reauth-attempts { margin: 0; font-size: 0.8rem; color: #EF4444; font-weight: 600; }
+    .reauth-field { width: 100%; max-width: 320px; }
+    .reauth-error { margin: 0; font-size: 0.8rem; color: #EF4444; }
   `],
 })
 export class AppComponent implements OnInit, OnDestroy {
@@ -299,6 +357,14 @@ export class AppComponent implements OnInit, OnDestroy {
   currentRole: UserRole | null = null;
   unreadCount = 0;
   pageTitle = 'HarborPoint';
+
+  // Re-auth modal state
+  reAuthOpen         = false;
+  reAuthLoading      = false;
+  reAuthPassword     = '';
+  reAuthError        = '';
+  reAuthAttemptsLeft = 3;
+  private _pendingAnomaly: AnomalyEvent | null = null;
 
   private subs: Subscription[] = [];
 
@@ -312,9 +378,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   constructor(
-    private auth: AuthService,
-    private router: Router,
+    private auth:      AuthService,
+    private router:    Router,
     private messaging: MessagingService,
+    private anomaly:   AnomalyService,
   ) {}
 
   ngOnInit(): void {
@@ -340,6 +407,17 @@ export class AppComponent implements OnInit, OnDestroy {
     // Restore sidebar state from localStorage
     const collapsed = localStorage.getItem('hp_sidebar');
     if (collapsed) this.sidebarCollapsed = collapsed === 'true';
+
+    // Subscribe to anomaly events → show re-auth modal
+    this.subs.push(
+      this.anomaly.anomalyDetected$.subscribe(event => {
+        this._pendingAnomaly    = event;
+        this.reAuthPassword     = '';
+        this.reAuthError        = '';
+        this.reAuthAttemptsLeft = 3;
+        this.reAuthOpen         = true;
+      }),
+    );
   }
 
   private async loadUnreadCount(): Promise<void> {
@@ -358,6 +436,47 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   lockSession(): void {
+    this.anomaly.reset();
+    this.auth.lockSession();
+  }
+
+  // --------------------------------------------------
+  // Re-auth modal handlers
+  // --------------------------------------------------
+
+  async onReAuthConfirm(): Promise<void> {
+    if (this.reAuthLoading || !this.reAuthPassword) return;
+    this.reAuthLoading = true;
+    this.reAuthError   = '';
+
+    try {
+      const ok = await this.auth.reAuthenticate(this.reAuthPassword);
+      if (ok) {
+        this.reAuthOpen    = false;
+        this.reAuthPassword = '';
+        this._pendingAnomaly = null;
+      } else {
+        this.reAuthAttemptsLeft--;
+        if (this.reAuthAttemptsLeft <= 0) {
+          this.reAuthOpen = false;
+          this.anomaly.reset();
+          this.auth.lockSession();
+        } else {
+          this.reAuthError    = 'Incorrect password.';
+          this.reAuthPassword = '';
+        }
+      }
+    } finally {
+      this.reAuthLoading = false;
+    }
+  }
+
+  onReAuthCancel(): void {
+    this.reAuthOpen = false;
+    this.reAuthPassword = '';
+    this._pendingAnomaly = null;
+    // Cancelling the re-auth modal locks the session for security
+    this.anomaly.reset();
     this.auth.lockSession();
   }
 

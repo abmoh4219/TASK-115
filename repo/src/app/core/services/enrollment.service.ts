@@ -1,20 +1,87 @@
 import { Injectable } from '@angular/core';
-import { DbService, CourseRound, Enrollment, EnrollmentHistory } from './db.service';
+import { DbService, CourseRound, Enrollment, EnrollmentHistory, Course, CoursePrerequisite } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
 import { AnomalyService } from './anomaly.service';
+import DOMPurify from 'dompurify';
 
 export type EnrollmentResult =
   | { success: true; status: 'enrolled' | 'waitlisted'; enrollment: Enrollment }
   | { success: false; reason: string };
 
+export interface CreateCourseParams {
+  title:         string;
+  description:   string;
+  category:      string;
+  prerequisites: CoursePrerequisite[];
+}
+
+export interface CreateRoundParams {
+  courseId:         number;
+  startAt:          Date;
+  endAt:            Date;
+  capacity:         number;
+  waitlistCapacity: number;
+  addCutoffAt:      Date;
+  dropCutoffAt:     Date;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EnrollmentService {
 
   constructor(
-    private db: DbService,
-    private audit: AuditService,
+    private db:      DbService,
+    private audit:   AuditService,
     private anomaly: AnomalyService,
   ) {}
+
+  // --------------------------------------------------
+  // Course Management
+  // --------------------------------------------------
+
+  async getCourses(): Promise<Course[]> {
+    return this.db.courses.toArray();
+  }
+
+  async getCourse(id: number): Promise<Course | undefined> {
+    return this.db.courses.get(id);
+  }
+
+  async createCourse(params: CreateCourseParams): Promise<Course> {
+    const now = new Date();
+    const id  = await this.db.courses.add({
+      title:         DOMPurify.sanitize(params.title),
+      description:   DOMPurify.sanitize(params.description),
+      category:      DOMPurify.sanitize(params.category),
+      prerequisites: params.prerequisites,
+      createdAt:     now,
+      updatedAt:     now,
+    });
+    return (await this.db.courses.get(id))!;
+  }
+
+  // --------------------------------------------------
+  // Round Management
+  // --------------------------------------------------
+
+  async getCourseRounds(courseId: number): Promise<CourseRound[]> {
+    return this.db.courseRounds.where('courseId').equals(courseId).toArray();
+  }
+
+  async createRound(params: CreateRoundParams): Promise<CourseRound> {
+    const id = await this.db.courseRounds.add({
+      courseId:         params.courseId,
+      startAt:          params.startAt,
+      endAt:            params.endAt,
+      capacity:         params.capacity,
+      waitlistCapacity: params.waitlistCapacity,
+      addCutoffAt:      params.addCutoffAt,
+      dropCutoffAt:     params.dropCutoffAt,
+      enrolled:         [],
+      waitlisted:       [],
+      status:           'open',
+    });
+    return (await this.db.courseRounds.get(id))!;
+  }
 
   // --------------------------------------------------
   // Enroll or Waitlist
@@ -36,7 +103,7 @@ export class EnrollmentService {
     if (existing) return { success: false, reason: 'ALREADY_ENROLLED' };
 
     const anomalyKey = `${residentId}-${roundId}`;
-    const isAnomaly = this.anomaly.trackRegistrationAttempt(anomalyKey);
+    const isAnomaly  = this.anomaly.trackRegistrationAttempt(anomalyKey);
     if (isAnomaly) {
       return { success: false, reason: 'ANOMALY_DETECTED' };
     }
@@ -46,26 +113,23 @@ export class EnrollmentService {
     if (!prereqResult.ok) return { success: false, reason: prereqResult.reason! };
 
     const historyEntry: EnrollmentHistory = {
-      status: 'enrolled',
+      status:    'enrolled',
       changedAt: now,
       changedBy: residentId,
     };
 
-    let status: 'enrolled' | 'waitlisted';
-
     if (round.enrolled.length < round.capacity) {
       // Enroll directly
-      status = 'enrolled';
       await this.db.courseRounds.update(roundId, {
         enrolled: [...round.enrolled, residentId],
       });
 
       const id = await this.db.enrollments.add({
         residentId,
-        courseId: round.courseId,
+        courseId:        round.courseId,
         roundId,
-        status: 'enrolled',
-        enrolledAt: now,
+        status:          'enrolled',
+        enrolledAt:      now,
         historySnapshot: [historyEntry],
       });
 
@@ -78,7 +142,6 @@ export class EnrollmentService {
 
     if (round.waitlisted.length < round.waitlistCapacity) {
       // Add to waitlist
-      status = 'waitlisted';
       const wlEntry: EnrollmentHistory = { ...historyEntry, status: 'waitlisted' };
       await this.db.courseRounds.update(roundId, {
         waitlisted: [...round.waitlisted, residentId],
@@ -86,10 +149,10 @@ export class EnrollmentService {
 
       const id = await this.db.enrollments.add({
         residentId,
-        courseId: round.courseId,
+        courseId:        round.courseId,
         roundId,
-        status: 'waitlisted',
-        enrolledAt: now,
+        status:          'waitlisted',
+        enrolledAt:      now,
         historySnapshot: [wlEntry],
       });
 
@@ -119,20 +182,20 @@ export class EnrollmentService {
     if (now > round.dropCutoffAt) return { success: false, reason: 'DROP_CUTOFF_PASSED' };
 
     const historyEntry: EnrollmentHistory = {
-      status: 'dropped',
+      status:    'dropped',
       changedAt: now,
       changedBy: actorId,
-      reason: reasonCode,
+      reason:    reasonCode,
     };
 
     await this.db.enrollments.update(enrollmentId, {
-      status: 'dropped',
-      droppedAt: now,
-      dropReasonCode: reasonCode,
+      status:          'dropped',
+      droppedAt:       now,
+      dropReasonCode:  reasonCode,
       historySnapshot: [...enrollment.historySnapshot, historyEntry],
     });
 
-    // Remove from enrolled/waitlisted list
+    // Remove from enrolled / waitlisted list
     if (enrollment.status === 'enrolled') {
       await this.db.courseRounds.update(enrollment.roundId, {
         enrolled: round.enrolled.filter(id => id !== enrollment.residentId),
@@ -173,13 +236,13 @@ export class EnrollmentService {
 
     if (enrollment?.id) {
       const historyEntry: EnrollmentHistory = {
-        status: 'enrolled',
+        status:    'enrolled',
         changedAt: new Date(),
         changedBy: 0, // system-triggered
-        reason: 'WAITLIST_PROMOTION',
+        reason:    'WAITLIST_PROMOTION',
       };
       await this.db.enrollments.update(enrollment.id, {
-        status: 'enrolled',
+        status:          'enrolled',
         historySnapshot: [...enrollment.historySnapshot, historyEntry],
       });
       this.audit.log(AuditAction.WAITLIST_PROMOTED, nextResidentId, actorRole, 'enrollment', enrollment.id);
@@ -187,42 +250,54 @@ export class EnrollmentService {
   }
 
   // --------------------------------------------------
-  // Prerequisites Check
+  // Prerequisites Check (public for UI eligibility display)
   // --------------------------------------------------
 
-  private async checkPrerequisites(residentId: number, courseId: number): Promise<{ ok: boolean; reason?: string }> {
+  async checkPrerequisites(residentId: number, courseId: number): Promise<{ ok: boolean; reason?: string; details?: { prereq: CoursePrerequisite; met: boolean; reason?: string }[] }> {
     const course = await this.db.courses.get(courseId);
     if (!course) return { ok: false, reason: 'COURSE_NOT_FOUND' };
 
     const resident = await this.db.residents.get(residentId);
     if (!resident) return { ok: false, reason: 'RESIDENT_NOT_FOUND' };
 
+    const details: { prereq: CoursePrerequisite; met: boolean; reason?: string }[] = [];
+
     for (const prereq of course.prerequisites) {
       if (prereq.type === 'active_resident') {
-        if (resident.status !== 'active') return { ok: false, reason: 'PREREQ_NOT_ACTIVE_RESIDENT' };
+        const met = resident.status === 'active';
+        details.push({ prereq, met, reason: met ? undefined : 'PREREQ_NOT_ACTIVE_RESIDENT' });
+        if (!met) return { ok: false, reason: 'PREREQ_NOT_ACTIVE_RESIDENT', details };
       }
       if (prereq.type === 'age') {
         const age = this.calculateAge(resident.dateOfBirth);
-        if (age < (prereq.value as number)) return { ok: false, reason: `PREREQ_AGE_${prereq.value}` };
+        const met = age >= (prereq.value as number);
+        details.push({ prereq, met, reason: met ? undefined : `PREREQ_AGE_${prereq.value}` });
+        if (!met) return { ok: false, reason: `PREREQ_AGE_${prereq.value}`, details };
       }
       if (prereq.type === 'prior_completion') {
         const completed = await this.db.enrollments
           .filter(e => e.residentId === residentId && e.courseId === (prereq.value as number) && e.status === 'completed')
           .count();
-        if (completed === 0) return { ok: false, reason: 'PREREQ_PRIOR_COMPLETION' };
+        const met = completed > 0;
+        details.push({ prereq, met, reason: met ? undefined : 'PREREQ_PRIOR_COMPLETION' });
+        if (!met) return { ok: false, reason: 'PREREQ_PRIOR_COMPLETION', details };
       }
     }
 
-    return { ok: true };
+    return { ok: true, details };
   }
 
   private calculateAge(dob: Date): number {
     const now = new Date();
-    let age = now.getFullYear() - dob.getFullYear();
-    const m = now.getMonth() - dob.getMonth();
+    let age   = now.getFullYear() - dob.getFullYear();
+    const m   = now.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
     return age;
   }
+
+  // --------------------------------------------------
+  // Query helpers
+  // --------------------------------------------------
 
   async getEnrollmentsForResident(residentId: number): Promise<Enrollment[]> {
     return this.db.enrollments.where('residentId').equals(residentId).toArray();
@@ -230,5 +305,13 @@ export class EnrollmentService {
 
   async getRoundEnrollments(roundId: number): Promise<Enrollment[]> {
     return this.db.enrollments.where('roundId').equals(roundId).toArray();
+  }
+
+  /**
+   * Returns the historySnapshot for a given enrollment in chronological order.
+   */
+  async getEnrollmentHistory(enrollmentId: number): Promise<EnrollmentHistory[]> {
+    const enrollment = await this.db.enrollments.get(enrollmentId);
+    return enrollment?.historySnapshot ?? [];
   }
 }

@@ -85,6 +85,11 @@ describe('Enrollment Integration — happy path', () => {
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
     await db.open();
+    await db.courses.clear();
+    await db.courseRounds.clear();
+    await db.enrollments.clear();
+    await db.residents.clear();
+    await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
   });
 
@@ -172,6 +177,11 @@ describe('Enrollment Integration — drop rules', () => {
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
     await db.open();
+    await db.courses.clear();
+    await db.courseRounds.clear();
+    await db.enrollments.clear();
+    await db.residents.clear();
+    await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
   });
 
@@ -245,5 +255,221 @@ describe('Enrollment Integration — drop rules', () => {
       expect(updated?.historySnapshot[0].status).toBe('enrolled');
       expect(updated?.historySnapshot[1].status).toBe('dropped');
     }
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Course & Round management
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('Enrollment Integration — course & round management', () => {
+  let enrollmentService: EnrollmentService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    enrollmentService = TestBed.inject(EnrollmentService);
+    await db.open();
+    await db.courses.clear();
+    await db.courseRounds.clear();
+    await db.enrollments.clear();
+    await db.residents.clear();
+    await db.auditLogs.clear();
+    await new Promise(r => setTimeout(r, 200));
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('createCourse persists title, description, category, and timestamps', async () => {
+    const course = await enrollmentService.createCourse({
+      title: 'Integration Art', description: 'Art basics', category: 'Arts', prerequisites: [],
+    });
+
+    expect(course.id).toBeDefined();
+    expect(course.title).toBe('Integration Art');
+    expect(course.category).toBe('Arts');
+    expect(course.createdAt).toBeInstanceOf(Date);
+
+    const fetched = await enrollmentService.getCourse(course.id!);
+    expect(fetched?.title).toBe('Integration Art');
+  });
+
+  it('createRound linked to course is returned by getCourseRounds', async () => {
+    const course = await enrollmentService.createCourse({
+      title: 'Music', description: '', category: 'Arts', prerequisites: [],
+    });
+    const now = new Date();
+    const round = await enrollmentService.createRound({
+      courseId:         course.id!,
+      startAt:          new Date(now.getTime() + 86_400_000),
+      endAt:            new Date(now.getTime() + 90_000_000),
+      capacity:         15,
+      waitlistCapacity: 3,
+      addCutoffAt:      new Date(now.getTime() + 3_600_000),
+      dropCutoffAt:     new Date(now.getTime() + 50_000_000),
+    });
+
+    expect(round.status).toBe('open');
+
+    const rounds = await enrollmentService.getCourseRounds(course.id!);
+    expect(rounds.length).toBe(1);
+    expect(rounds[0].capacity).toBe(15);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// getEnrollmentHistory
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('Enrollment Integration — getEnrollmentHistory', () => {
+  let enrollmentService: EnrollmentService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    enrollmentService = TestBed.inject(EnrollmentService);
+    await db.open();
+    await db.courses.clear();
+    await db.courseRounds.clear();
+    await db.enrollments.clear();
+    await db.residents.clear();
+    await db.auditLogs.clear();
+    await new Promise(r => setTimeout(r, 200));
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('returns single enrolled entry after initial enroll', async () => {
+    const residentId = await seedActiveResident(db);
+    const { roundId } = await seedTestCourse(db);
+    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    expect(enroll.success).toBe(true);
+
+    if (enroll.success) {
+      const history = await enrollmentService.getEnrollmentHistory(enroll.enrollment.id!);
+      expect(history.length).toBe(1);
+      expect(history[0].status).toBe('enrolled');
+    }
+  });
+
+  it('returns two entries after enroll then drop', async () => {
+    const residentId = await seedActiveResident(db);
+    const { roundId } = await seedTestCourse(db, { dropCutoffFuture: true });
+    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    expect(enroll.success).toBe(true);
+
+    if (enroll.success) {
+      await enrollmentService.drop(enroll.enrollment.id!, residentId, 'resident', 'VOLUNTARY');
+      const history = await enrollmentService.getEnrollmentHistory(enroll.enrollment.id!);
+      expect(history.length).toBe(2);
+      expect(history[1].status).toBe('dropped');
+      expect(history[1].reason).toBe('VOLUNTARY');
+    }
+  });
+
+  it('returns empty array for non-existent enrollment id', async () => {
+    const history = await enrollmentService.getEnrollmentHistory(999_888);
+    expect(history).toEqual([]);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// checkPrerequisites — detailed eligibility
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('Enrollment Integration — checkPrerequisites', () => {
+  let enrollmentService: EnrollmentService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    enrollmentService = TestBed.inject(EnrollmentService);
+    await db.open();
+    await db.courses.clear();
+    await db.courseRounds.clear();
+    await db.enrollments.clear();
+    await db.residents.clear();
+    await db.auditLogs.clear();
+    await new Promise(r => setTimeout(r, 200));
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('returns ok:true with details array when all prerequisites are met', async () => {
+    const residentId = await seedActiveResident(db);
+    const courseId   = await db.courses.add({
+      title: 'Prereq Test', description: '', category: 'General',
+      prerequisites: [{ type: 'active_resident', value: true }],
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const result = await enrollmentService.checkPrerequisites(residentId, courseId);
+    expect(result.ok).toBe(true);
+    expect(result.details?.length).toBe(1);
+    expect(result.details?.[0].met).toBe(true);
+  });
+
+  it('passes age prerequisite when resident is old enough', async () => {
+    const residentId = await db.residents.add({
+      firstName: 'Senior', lastName: 'Citizen',
+      email: 'sr@test.local', phone: '555-0010',
+      dateOfBirth: new Date('1950-01-01'),  // well over 18
+      status: 'active',
+      encryptedId: 'enc-sr',
+      notes: [], consentGiven: false,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const courseId = await db.courses.add({
+      title: 'Adults Only', description: '', category: 'General',
+      prerequisites: [{ type: 'age', value: 18 }],
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const result = await enrollmentService.checkPrerequisites(residentId, courseId);
+    expect(result.ok).toBe(true);
+  });
+
+  it('fails age prerequisite when resident is too young', async () => {
+    const residentId = await db.residents.add({
+      firstName: 'Young', lastName: 'Resident',
+      email: 'young@test.local', phone: '555-0011',
+      dateOfBirth: new Date(new Date().getFullYear() - 10, 6, 1),  // ~10 years old
+      status: 'active',
+      encryptedId: 'enc-young',
+      notes: [], consentGiven: false,
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const courseId = await db.courses.add({
+      title: 'Adults Only', description: '', category: 'General',
+      prerequisites: [{ type: 'age', value: 18 }],
+      createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const result = await enrollmentService.checkPrerequisites(residentId, courseId);
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('PREREQ_AGE_18');
   });
 });

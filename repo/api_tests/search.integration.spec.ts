@@ -50,6 +50,8 @@ describe('Search Integration — full-text', () => {
     service = TestBed.inject(SearchService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await db.searchIndex.clear();
+    await db.zeroResultsLog.clear();
     await seedIndex(db);
   });
 
@@ -94,6 +96,8 @@ describe('Search Integration — facets', () => {
     service = TestBed.inject(SearchService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await db.searchIndex.clear();
+    await db.zeroResultsLog.clear();
     await seedIndex(db);
   });
 
@@ -132,8 +136,12 @@ describe('Search Integration — synonym expansion', () => {
     service = TestBed.inject(SearchService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await db.searchIndex.clear();
+    await db.searchDictionary.clear();
+    await db.zeroResultsLog.clear();
     await seedIndex(db);
-    // Seed data includes 'resident' → synonyms: ['tenant', 'occupant', 'renter']
+    // Seed dictionary so 'tenant' → synonym of 'resident'
+    await db.searchDictionary.add({ term: 'resident', synonyms: ['tenant', 'occupant', 'renter'], corrections: [] });
   });
 
   afterEach(async () => {
@@ -146,5 +154,94 @@ describe('Search Integration — synonym expansion', () => {
     const results = await service.search('tenant');
     // Should find entries containing 'resident' via synonym expansion
     expect(results.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Search Integration — dictionary management', () => {
+  let service: SearchService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [SearchService, DbService, AnomalyService, AuditService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    service = TestBed.inject(SearchService);
+    await db.open();
+    await new Promise(r => setTimeout(r, 200));
+    await db.searchDictionary.clear();
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('addDictionaryEntry stores entry and getDictionary returns it', async () => {
+    const entry = await service.addDictionaryEntry({
+      term: 'lease', synonyms: ['contract', 'agreement'], corrections: ['lese'],
+    });
+
+    expect(entry.id).toBeDefined();
+    expect(entry.term).toBe('lease');
+
+    const dict = await service.getDictionary();
+    expect(dict.some(d => d.term === 'lease')).toBe(true);
+  });
+
+  it('updateDictionaryEntry modifies corrections field', async () => {
+    const entry = await service.addDictionaryEntry({
+      term: 'building', synonyms: [], corrections: ['bilding'],
+    });
+
+    await service.updateDictionaryEntry(entry.id!, {
+      corrections: ['bilding', 'buidling'],
+    });
+
+    const updated = await db.searchDictionary.get(entry.id!);
+    expect(updated!.corrections).toContain('buidling');
+  });
+});
+
+describe('Search Integration — trending terms', () => {
+  let service: SearchService;
+  let db: DbService;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [SearchService, DbService, AnomalyService, AuditService, AuthService, CryptoService],
+    });
+    db = TestBed.inject(DbService);
+    service = TestBed.inject(SearchService);
+    await db.open();
+    await new Promise(r => setTimeout(r, 200));
+    await db.searchIndex.clear();
+    await db.zeroResultsLog.clear();
+    await seedIndex(db);
+  });
+
+  afterEach(async () => {
+    await db.close();
+    TestBed.resetTestingModule();
+  });
+
+  it('getTrendingTerms reflects repeated searches', async () => {
+    await service.search('John Smith');
+    await service.search('John Smith');
+    await service.search('orientation');
+
+    const trending = await service.getTrendingTerms(10);
+    const johnEntry = trending.find(t => t.term === 'John Smith');
+    expect(johnEntry).toBeDefined();
+    expect(johnEntry!.count).toBeGreaterThanOrEqual(2);
+  });
+
+  it('getFacets returns categories from the index', async () => {
+    const facets = await service.getFacets();
+    const cats = facets.categories.map(c => c.value);
+    expect(cats).toContain('resident');
+    expect(cats).toContain('course');
   });
 });
