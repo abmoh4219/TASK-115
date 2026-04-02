@@ -37,16 +37,18 @@ All processing runs in a browser-only service layer with no backend dependencies
 
 ## Non-Negotiable Rules (Read Before Every Response)
 
-1. **No backend. No server. No Docker.** Everything runs in the browser. All data lives in IndexedDB and LocalStorage. Never suggest or implement a server, REST API endpoint, or database connection.
+1. **No backend. No external server.** Everything runs in the browser. All data lives in IndexedDB and LocalStorage. Never implement a REST API endpoint or database connection.
 2. **Angular + TypeScript only.** Do not switch frameworks. Do not use React, Vue, or plain JS.
 3. **Offline-first.** The app must function with zero network access after the initial load. No external API calls at runtime except what the user explicitly triggers (file import/export).
-4. **Role guards in Angular route guards and service methods — never in templates/views.** This is a security requirement.
-5. **Never expose sensitive fields in plaintext.** Document file hashes, resident IDs, and confidential notes must be encrypted at rest using AES-GCM.
-6. **Immutable audit log.** Audit entries are append-only; never delete or modify them programmatically.
-7. **Masking policy is always on.** Phone numbers and email-like strings in messages must be automatically redacted before display.
-8. **Test coverage is mandatory.** Every feature module must have corresponding unit tests and integration (API-layer) tests. Missing tests = failing QA.
-9. **`.gitignore` is mandatory.** The `repo/` folder is shared via GitHub with the QA team. A proper `.gitignore` must exist at `repo/.gitignore` and must exclude all build artifacts, dependencies, and caches. Never commit `node_modules/`, `dist/`, or `.angular/`. There is no `.env` file — this project has zero environment variables, zero API keys, and zero server configuration. QA runs `npm install && npm start` and the app works immediately.
-
+4. **Docker is mandatory for everything.** QA evaluates using ONLY `docker compose up` (app) and `docker compose run test` (tests). Local npm or jest commands are NOT acceptable delivery. Every phase must keep Docker working.
+5. **Do not modify Dockerfile, Dockerfile.test, nginx.conf, or docker-compose.yml** unless a phase explicitly requires it. These are set up in the Docker Retrofit prompt and must stay intact.
+6. **Role guards in Angular route guards and service methods — never in templates/views.** This is a security requirement.
+7. **Never expose sensitive fields in plaintext.** Document file hashes, resident IDs, and confidential notes must be encrypted at rest using AES-GCM.
+8. **Immutable audit log.** Audit entries are append-only; never delete or modify them programmatically.
+9. **Masking policy is always on.** Phone numbers and email-like strings in messages must be automatically redacted before display.
+10. **Test coverage is mandatory.** Every feature module must have unit + integration tests. `docker compose run test` must exit with code 0.
+11. **UI must be beautiful, modern SaaS quality.** Every page must look like a premium product (think Linear, Vercel, Notion). Angular Material with navy/teal theme, proper shadows, smooth animations, consistent spacing, meaningful empty/loading states. No plain unstyled HTML.
+12. **`.gitignore` is mandatory.** `repo/.gitignore` must exclude `node_modules/`, `dist/`, `.angular/`. No `.env` file — zero environment variables. QA clones then runs `docker compose up` — nothing else needed.
 ---
 
 ## Architecture Overview
@@ -416,99 +418,76 @@ const LS_KEYS = {
 
 ---
 
-## Development Sequence (Follow This Order)
+## Docker Infrastructure (Mandatory — Set Up in Prompt 2.5)
 
-1. Project scaffold + routing + role system + DB schema + **`.gitignore`** (created in Phase 1)
-2. Core services: `db.service`, `crypto.service`, `auth.service`, `audit.service`
-3. Shared UI components: table, drawer, modal, badge, toast
-4. Property module: building/unit/room CRUD + occupancy management
-5. Resident module: profiles, move-in/out, change log
-6. Document module: upload flow, consent modal, compliance queue
-7. Messaging module: announcements, DM threads, masking, templates
-8. Search module: full-text, facets, synonyms, zero-results log
-9. Enrollment module: rounds, prerequisites, waitlist, immutable history
-10. Analytics module: dashboards, A/B comparisons
-11. Audit log viewer
-12. Import/export with encryption
-13. Anomaly detection + re-auth modal
-14. Unit tests + integration tests + run_tests.sh
-15. README finalization
+These four files live at `repo/` root and must never be modified by feature phases:
+
+| File | Purpose |
+|---|---|
+| `Dockerfile` | Multi-stage build: Node.js builder → Nginx Alpine runner |
+| `Dockerfile.test` | Node.js image that runs unit + integration tests and exits |
+| `nginx.conf` | Serves Angular SPA, routes all paths to index.html |
+| `docker-compose.yml` | `app` service (port 4200:80) + `test` service (profiles: test) |
+
+QA runs exactly two commands — nothing else:
+```bash
+docker compose up          # → app at http://localhost:4200
+docker compose run test    # → test results, exit 0 = pass
+```
 
 ---
 
-## `.gitignore` — Required Content for `repo/.gitignore`
+## Development Sequence (Follow This Order)
 
-Create this file at `repo/.gitignore` in Phase 1. The QA team clones the GitHub repo — anything listed here must never appear in the repository.
-
-```gitignore
-# Dependencies
-node_modules/
-
-# Angular build output
-dist/
-.angular/
-.angular/cache/
-
-# Test coverage output
-coverage/
-jest-coverage/
-.jest-cache/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE / Editor
-.idea/
-.vscode/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Temporary files
-*.tmp
-*.temp
-.tmp/
-
-# App-generated export files (runtime only, not source)
-*.hpd
-```
-
-> **Note:** No `.env` file exists or is needed. This is a fully offline, browser-only app with no environment variables, no API keys, and no server configuration. The QA team runs `npm install && npm start` — that's it.
-
+0. **Docker Retrofit (Prompt 2.5)** — add Dockerfile, Dockerfile.test, nginx.conf, docker-compose.yml, update README ← **ALREADY DONE or do this before Phase 3**
+1. Project scaffold + routing + role system + DB schema + `.gitignore`
+2. Shared UI component library (modern SaaS design)
+3. Property module
+4. Resident module
+5. Document module
+6. Messaging module
+7. Search module + anomaly detection
+8. Enrollment module
+9. Analytics + audit log viewer
+10. Import/export + settings + dark mode + final wiring
+11. Complete test suite + `docker compose run test` verification + README finalization
 ---
 
 ## README Must Include
 
 ```markdown
 ## How to Run
-npm install
-npm start
-# Access at http://localhost:4200
-
-## Default Test Credentials (local only)
-Admin: admin / harborpoint2024
-Resident: resident / harborpoint2024
-Compliance: compliance / harborpoint2024
-Analyst: analyst / harborpoint2024
+```bash
+docker compose up
+```
+Open http://localhost:4200 — no configuration needed.
 
 ## How to Run Tests
-chmod +x run_tests.sh
-./run_tests.sh
+```bash
+docker compose run test
+```
+
+## How to Stop
+```bash
+docker compose down
+```
+
+## Default Login Credentials
+| Role | Password |
+|------|----------|
+| Property Administrator | harborpoint2024 |
+| Resident User | harborpoint2024 |
+| Compliance Reviewer | harborpoint2024 |
+| Operations Analyst | harborpoint2024 |
 
 ## How to Import/Export Data
-Settings → Import/Export → Enter password → Select file
+Settings → Data Management → Export / Import with password
 
-## Verification
-1. Log in as Admin → Create a building → Add a unit → Add a room
-2. Log in as Resident → Fill profile → Upload a document → Register for a course
-3. Log in as Compliance → Approve the document
-4. Log in as Analyst → View the dashboard
+## Verification Steps
+1. docker compose up → open http://localhost:4200
+2. Log in as Admin → Property → Create building → Add unit → Add room
+3. Log in as Resident → Upload a document → Register for a course
+4. Log in as Compliance → Approve the document
+5. Log in as Analyst → View the analytics dashboard
+6. docker compose run test → all tests pass
 ```

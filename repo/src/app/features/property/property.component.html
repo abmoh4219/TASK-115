@@ -1,0 +1,325 @@
+<!-- ===================================================
+     Property Overview Page
+     =================================================== -->
+<div class="property-page">
+
+  <!-- ── Hero Stats Row ───────────────────────────────── -->
+  <div class="stats-row">
+    <app-stat-card
+      icon="domain"
+      label="Total Buildings"
+      [value]="loading ? '' : totalBuildings"
+      [loading]="loading"
+      iconBg="rgba(30,58,95,0.08)"
+      iconColor="#1e3a5f"
+    ></app-stat-card>
+
+    <app-stat-card
+      icon="meeting_room"
+      label="Total Units"
+      [value]="loading ? '' : totalUnits"
+      [loading]="loading"
+      iconBg="rgba(45,212,191,0.1)"
+      iconColor="#0d9488"
+    ></app-stat-card>
+
+    <app-stat-card
+      icon="bed"
+      label="Total Rooms"
+      [value]="loading ? '' : totalRooms"
+      [loading]="loading"
+      iconBg="rgba(139,92,246,0.1)"
+      iconColor="#7c3aed"
+    ></app-stat-card>
+
+    <app-stat-card
+      icon="people"
+      label="Occupancy Rate"
+      [value]="loading ? '' : (overallOccupancyRate + '%')"
+      [loading]="loading"
+      [iconBg]="overallOccupancyRate >= 95 ? 'rgba(239,68,68,0.1)' : overallOccupancyRate >= 80 ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)'"
+      [iconColor]="occupancyColor(overallOccupancyRate)"
+    ></app-stat-card>
+  </div>
+
+  <!-- ── Section Header ───────────────────────────────── -->
+  <div class="section-header">
+    <div class="section-header__left">
+      <h2 class="section-header__title">Buildings</h2>
+      <span class="count-badge">{{ buildings.length }}</span>
+    </div>
+    <button mat-raised-button class="btn-teal" (click)="openAddBuilding()" [disabled]="loading">
+      <mat-icon>add</mat-icon>
+      Add Building
+    </button>
+  </div>
+
+  <!-- ── Loading Skeletons ────────────────────────────── -->
+  <div *ngIf="loading" class="buildings-grid">
+    <div *ngFor="let i of skeletonItems" class="building-card building-card--skeleton">
+      <div class="skeleton-card__header">
+        <div class="skeleton-box skeleton-box--icon"></div>
+        <div class="skeleton-card__meta">
+          <div class="skeleton-line skeleton-line--title"></div>
+          <div class="skeleton-line skeleton-line--sub"></div>
+        </div>
+      </div>
+      <div class="skeleton-card__divider"></div>
+      <div class="skeleton-card__stats">
+        <div class="skeleton-box skeleton-box--stat"></div>
+        <div class="skeleton-box skeleton-box--stat"></div>
+        <div class="skeleton-box skeleton-box--stat"></div>
+      </div>
+      <div class="skeleton-card__bar"></div>
+    </div>
+  </div>
+
+  <!-- ── Buildings Grid ───────────────────────────────── -->
+  <div *ngIf="!loading && buildingStats.length > 0" class="buildings-grid">
+    <div
+      *ngFor="let stat of buildingStats"
+      class="building-card"
+      (click)="openBuilding(stat)"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="openBuilding(stat)"
+      (keydown.space)="openBuilding(stat); $event.preventDefault()"
+    >
+      <!-- Card Header -->
+      <div class="building-card__header">
+        <div class="building-card__icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke="#1e3a5f" stroke-width="1.5"/>
+            <path d="M9 21V9H15V21" stroke="#1e3a5f" stroke-width="1.5"/>
+            <rect x="3" y="3" width="18" height="4" rx="1" fill="rgba(30,58,95,0.08)" stroke="#1e3a5f" stroke-width="1.5"/>
+            <rect x="7" y="13" width="2" height="2" fill="#2dd4bf"/>
+            <rect x="11" y="13" width="2" height="2" fill="#2dd4bf"/>
+            <rect x="15" y="13" width="2" height="2" fill="#2dd4bf"/>
+            <rect x="7" y="17" width="2" height="2" fill="#1e3a5f" opacity="0.4"/>
+            <rect x="15" y="17" width="2" height="2" fill="#1e3a5f" opacity="0.4"/>
+          </svg>
+        </div>
+        <div class="building-card__meta">
+          <h3 class="building-card__name">{{ stat.building.name }}</h3>
+          <p class="building-card__address">{{ stat.building.address }}</p>
+        </div>
+      </div>
+
+      <hr class="building-card__divider" />
+
+      <!-- Stats Row -->
+      <div class="building-card__stats">
+        <div class="building-card__stat">
+          <span class="building-card__stat-value">{{ stat.unitCount }}</span>
+          <span class="building-card__stat-label">Units</span>
+        </div>
+        <div class="building-card__stat-sep"></div>
+        <div class="building-card__stat">
+          <span class="building-card__stat-value">{{ stat.roomCount }}</span>
+          <span class="building-card__stat-label">Rooms</span>
+        </div>
+        <div class="building-card__stat-sep"></div>
+        <div class="building-card__stat">
+          <span class="building-card__stat-value" [style.color]="occupancyColor(stat.occupancyRate)">
+            {{ stat.occupancyRate }}%
+          </span>
+          <span class="building-card__stat-label">Occupied</span>
+        </div>
+      </div>
+
+      <!-- Occupancy Bar -->
+      <div class="building-card__occupancy">
+        <div class="occupancy-label">
+          <span>Occupancy</span>
+          <span [style.color]="occupancyColor(stat.occupancyRate)">
+            {{ stat.occupancyCount }}&thinsp;/&thinsp;{{ stat.roomCount }} rooms
+          </span>
+        </div>
+        <div class="occupancy-track">
+          <div
+            class="occupancy-fill occupancy-fill--{{ occupancyClass(stat.occupancyRate) }}"
+            [style.width.%]="stat.occupancyRate"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Empty State ──────────────────────────────────── -->
+  <app-empty-state
+    *ngIf="!loading && buildings.length === 0"
+    icon="domain"
+    title="No buildings yet"
+    description="Add your first building to start managing the property hierarchy — buildings, units, and rooms."
+  >
+    <button mat-raised-button class="btn-teal" (click)="openAddBuilding()">
+      <mat-icon>add</mat-icon>
+      Add your first building
+    </button>
+  </app-empty-state>
+
+</div><!-- /property-page -->
+
+
+<!-- ===================================================
+     Building Detail Drawer
+     =================================================== -->
+<app-building-drawer
+  [open]="buildingDrawerOpen"
+  [buildingStat]="selectedBuildingStat"
+  [units]="selectedBuildingUnits"
+  [rooms]="selectedBuildingRooms"
+  (closed)="buildingDrawerOpen = false"
+  (unitSelected)="openUnit($event)"
+  (addUnitClicked)="openAddUnit()"
+></app-building-drawer>
+
+
+<!-- ===================================================
+     Unit Detail Drawer
+     =================================================== -->
+<app-unit-drawer
+  [open]="unitDrawerOpen"
+  [unit]="selectedUnit"
+  [rooms]="selectedUnitRooms"
+  [occupantsMap]="roomOccupantsMap"
+  (closed)="unitDrawerOpen = false"
+  (moveIn)="openMoveIn($event)"
+  (moveOut)="openMoveOut($event)"
+  (addRoomClicked)="openAddRoom()"
+></app-unit-drawer>
+
+
+<!-- ===================================================
+     Move-In Modal
+     =================================================== -->
+<app-move-in-modal
+  [open]="moveInOpen"
+  [room]="selectedRoom"
+  [availableResidents]="availableResidents"
+  [saving]="isSaving"
+  (confirmed)="confirmMoveIn($event)"
+  (cancelled)="moveInOpen = false"
+></app-move-in-modal>
+
+
+<!-- ===================================================
+     Move-Out Modal
+     =================================================== -->
+<app-move-out-modal
+  [open]="moveOutOpen"
+  [data]="moveOutData"
+  [saving]="isSaving"
+  (confirmed)="confirmMoveOut($event)"
+  (cancelled)="moveOutOpen = false"
+></app-move-out-modal>
+
+
+<!-- ===================================================
+     Add Building Modal
+     =================================================== -->
+<app-modal
+  [open]="addBuildingOpen"
+  title="Add Building"
+  confirmLabel="Create Building"
+  [loading]="isSaving"
+  [confirmDisabled]="buildingForm.invalid"
+  (confirmed)="confirmAddBuilding()"
+  (cancelled)="addBuildingOpen = false"
+>
+  <form [formGroup]="buildingForm" class="modal-form">
+    <app-input
+      label="Building Name"
+      [required]="true"
+      formControlName="name"
+      placeholder="e.g. Harbor Tower"
+      [errorMessage]="fieldError(buildingForm, 'name')"
+    ></app-input>
+    <app-input
+      label="Address"
+      [required]="true"
+      formControlName="address"
+      placeholder="e.g. 1 Harbor Drive, CA 90210"
+      [errorMessage]="fieldError(buildingForm, 'address')"
+    ></app-input>
+    <app-input
+      label="Number of Floors"
+      type="number"
+      [required]="true"
+      formControlName="floors"
+      placeholder="10"
+      [errorMessage]="fieldError(buildingForm, 'floors')"
+    ></app-input>
+  </form>
+</app-modal>
+
+
+<!-- ===================================================
+     Add Unit Modal
+     =================================================== -->
+<app-modal
+  [open]="addUnitOpen"
+  title="Add Unit"
+  confirmLabel="Create Unit"
+  [loading]="isSaving"
+  [confirmDisabled]="unitForm.invalid"
+  (confirmed)="confirmAddUnit()"
+  (cancelled)="addUnitOpen = false"
+>
+  <form [formGroup]="unitForm" class="modal-form">
+    <app-input
+      label="Unit Number"
+      [required]="true"
+      formControlName="unitNumber"
+      placeholder="e.g. 201"
+      [errorMessage]="fieldError(unitForm, 'unitNumber')"
+    ></app-input>
+    <app-input
+      label="Floor"
+      type="number"
+      [required]="true"
+      formControlName="floor"
+      placeholder="2"
+      [errorMessage]="fieldError(unitForm, 'floor')"
+    ></app-input>
+    <app-select
+      label="Unit Type"
+      [required]="true"
+      formControlName="type"
+      [options]="unitTypeOptions"
+    ></app-select>
+  </form>
+</app-modal>
+
+
+<!-- ===================================================
+     Add Room Modal
+     =================================================== -->
+<app-modal
+  [open]="addRoomOpen"
+  title="Add Room"
+  confirmLabel="Create Room"
+  [loading]="isSaving"
+  [confirmDisabled]="roomForm.invalid"
+  (confirmed)="confirmAddRoom()"
+  (cancelled)="addRoomOpen = false"
+>
+  <form [formGroup]="roomForm" class="modal-form">
+    <app-input
+      label="Room Number"
+      [required]="true"
+      formControlName="roomNumber"
+      placeholder="e.g. 201A"
+      [errorMessage]="fieldError(roomForm, 'roomNumber')"
+    ></app-input>
+    <app-input
+      label="Capacity"
+      type="number"
+      [required]="true"
+      formControlName="capacity"
+      placeholder="1"
+      hint="Maximum number of occupants"
+      [errorMessage]="fieldError(roomForm, 'capacity')"
+    ></app-input>
+  </form>
+</app-modal>

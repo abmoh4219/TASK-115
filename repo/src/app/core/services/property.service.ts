@@ -1,20 +1,20 @@
 import { Injectable } from '@angular/core';
-import { DbService, Building, Unit, Room, Occupancy } from './db.service';
+import { DbService, Building, Unit, Room, Occupancy, Resident } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
 import DOMPurify from 'dompurify';
 
-export const MOVE_REASON_CODES = [
-  'NEW_RESIDENT',
-  'TRANSFER',
-  'UNIT_UPGRADE',
-  'UNIT_DOWNGRADE',
-  'LEASE_EXPIRY',
-  'EVICTION',
-  'VOLUNTARY_DEPARTURE',
-  'EMERGENCY_RELOCATION',
-] as const;
+export enum ReasonCode {
+  MOVE_IN_NEW        = 'MOVE_IN_NEW',
+  TRANSFER           = 'TRANSFER',
+  LEASE_START        = 'LEASE_START',
+  MOVE_OUT_VOLUNTARY = 'MOVE_OUT_VOLUNTARY',
+  MOVE_OUT_EVICTION  = 'MOVE_OUT_EVICTION',
+  LEASE_END          = 'LEASE_END',
+  ADMINISTRATIVE     = 'ADMINISTRATIVE',
+}
 
-export type MoveReasonCode = typeof MOVE_REASON_CODES[number];
+/** Union of enum values + string for backward-compatibility with existing DB records. */
+export type MoveReasonCode = ReasonCode | string;
 
 @Injectable({ providedIn: 'root' })
 export class PropertyService {
@@ -201,5 +201,26 @@ export class PropertyService {
     return this.db.occupancies
       .filter(o => o.residentId === residentId)
       .sortBy('effectiveFrom');
+  }
+
+  // --------------------------------------------------
+  // Room Occupants
+  // --------------------------------------------------
+
+  async getRoomOccupants(roomId: number): Promise<{ occupancy: Occupancy; resident: Resident }[]> {
+    const activeOccupancies = await this.db.occupancies
+      .filter(o => o.roomId === roomId && o.status === 'active')
+      .toArray();
+
+    const results = await Promise.all(
+      activeOccupancies.map(async occ => {
+        const resident = await this.db.residents.get(occ.residentId);
+        return resident ? { occupancy: occ, resident } : null;
+      }),
+    );
+
+    return results.filter(
+      (r): r is { occupancy: Occupancy; resident: Resident } => r !== null,
+    );
   }
 }
