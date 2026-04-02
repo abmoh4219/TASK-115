@@ -167,6 +167,79 @@ describe('AuditService — anomalyFlagged field', () => {
 });
 
 // =====================================================
+// getLogs filter
+// =====================================================
+
+describe('AuditService — getLogs filter', () => {
+  let service: AuditService;
+  let mockDb: MockDbService;
+
+  beforeEach(() => {
+    mockDb = new MockDbService();
+
+    TestBed.configureTestingModule({
+      providers: [
+        AuditService,
+        { provide: DbService, useValue: mockDb },
+      ],
+    });
+
+    service = TestBed.inject(AuditService);
+  });
+
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('filters by actorId', fakeAsync(async () => {
+    service.log(AuditAction.MOVE_IN, 10, 'admin', 'occupancy', 1);
+    service.log(AuditAction.MOVE_IN, 20, 'admin', 'occupancy', 2);
+    tick(100);
+
+    const logs = await service.getLogs({ actorId: 10 });
+    expect(logs.length).toBe(1);
+    expect(logs[0].actorId).toBe(10);
+  }));
+
+  it('filters by action', fakeAsync(async () => {
+    service.log(AuditAction.MOVE_IN, 1, 'admin', 'occupancy', 1);
+    service.log(AuditAction.DOCUMENT_APPROVED, 1, 'compliance', 'document', 2);
+    tick(100);
+
+    const logs = await service.getLogs({ action: AuditAction.DOCUMENT_APPROVED });
+    expect(logs.length).toBe(1);
+    expect(logs[0].action).toBe('DOCUMENT_APPROVED');
+  }));
+
+  it('filters anomaly-only', fakeAsync(async () => {
+    service.log(AuditAction.RESIDENT_CREATED, 1, 'admin', 'resident', 1, undefined, undefined, false);
+    service.log(AuditAction.ANOMALY_FLAGGED, 1, 'admin', 'session', 'a', undefined, undefined, true);
+    tick(100);
+
+    const logs = await service.getLogs({ anomalyOnly: true });
+    expect(logs.length).toBe(1);
+    expect(logs[0].anomalyFlagged).toBe(true);
+  }));
+
+  it('filters by date range', fakeAsync(async () => {
+    service.log(AuditAction.MOVE_IN, 1, 'admin', 'occupancy', 1);
+    tick(100);
+
+    const future = new Date(Date.now() + 86_400_000);
+    const logs = await service.getLogs({ from: future });
+    expect(logs.length).toBe(0);
+  }));
+
+  it('respects limit', fakeAsync(async () => {
+    for (let i = 0; i < 10; i++) {
+      service.log(AuditAction.MESSAGE_SENT, i, 'admin', 'message', i);
+    }
+    tick(100);
+
+    const logs = await service.getLogs({ limit: 3 });
+    expect(logs.length).toBe(3);
+  }));
+});
+
+// =====================================================
 // Enum values
 // =====================================================
 

@@ -240,6 +240,44 @@ h1, h2, h3, h4, h5, h6 {
   border-width: 0;
 }
 
+// --- Dark Theme Overrides ---
+body.dark-theme {
+  --hp-navy:        #e2e8f0;
+  --hp-navy-dark:   #f1f5f9;
+  --hp-navy-light:  #94a3b8;
+  --hp-teal:        #2DD4BF;
+  --hp-teal-dark:   #22c9b1;
+  --hp-teal-light:  #6ce0d5;
+  --hp-white:       #1e293b;
+  --hp-bg:          #0f172a;
+  --hp-border:      #334155;
+  --hp-text:        #e2e8f0;
+  --hp-text-muted:  #94a3b8;
+
+  color-scheme: dark;
+}
+
+body.dark-theme {
+  background-color: var(--hp-bg);
+  color: var(--hp-text);
+}
+
+body.dark-theme .hp-card {
+  background: var(--hp-white);
+  border-color: var(--hp-border);
+}
+
+body.dark-theme .hp-badge--neutral {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+// --- Density ---
+body.density-compact  { font-size: 13px; }
+body.density-comfortable { font-size: 14px; }
+body.density-spacious { font-size: 15px; }
+
 // --- Angular Material Form Field ---
 .mat-mdc-form-field {
   width: 100%;

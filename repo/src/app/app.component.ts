@@ -11,6 +11,7 @@ import { Subscription, filter } from 'rxjs';
 import { AuthService, UserRole } from './core/services/auth.service';
 import { MessagingService } from './core/services/messaging.service';
 import { AnomalyService, AnomalyEvent } from './core/services/anomaly.service';
+import { ThemeService } from './core/services/theme.service';
 import { ToastComponent } from './shared/components/toast/toast.component';
 import { BadgeComponent } from './shared/components/badge/badge.component';
 import { ModalComponent } from './shared/components/modal/modal.component';
@@ -332,6 +333,14 @@ const HIDDEN_SIDEBAR_ROUTES = ['/login', '/unauthorized'];
       overflow-y: auto;
       background: var(--hp-bg);
     }
+    /* Smooth page transition */
+    :host ::ng-deep router-outlet + * {
+      animation: pageFade 150ms ease-out;
+    }
+    @keyframes pageFade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
 
     /* ── Re-auth modal body ────────────────────── */
     .reauth-body {
@@ -382,14 +391,23 @@ export class AppComponent implements OnInit, OnDestroy {
     private router:    Router,
     private messaging: MessagingService,
     private anomaly:   AnomalyService,
+    private themeService: ThemeService,
   ) {}
 
   ngOnInit(): void {
-    // Track auth state
+    // Load theme before first render
+    this.themeService.init();
+
+    // Track auth state — redirect to /login on lock
     this.subs.push(
       this.auth.state$.subscribe(state => {
+        const wasLoggedIn = this.currentRole !== null;
         this.currentRole = state.role;
         this.loadUnreadCount();
+
+        if (wasLoggedIn && (state.isLocked || !state.isLoggedIn)) {
+          this.router.navigate(['/login']);
+        }
       }),
     );
 

@@ -3,6 +3,7 @@ import { saveAs } from 'file-saver';
 import { DbService } from './db.service';
 import { CryptoService } from './crypto.service';
 import { AuditAction, AuditService } from './audit.service';
+import { SearchService } from './search.service';
 
 @Injectable({ providedIn: 'root' })
 export class ImportExportService {
@@ -11,6 +12,7 @@ export class ImportExportService {
     private db: DbService,
     private crypto: CryptoService,
     private audit: AuditService,
+    private search: SearchService,
   ) {}
 
   // --------------------------------------------------
@@ -77,6 +79,9 @@ export class ImportExportService {
       const sanitized = this.sanitizeImport(data);
 
       await this.db.importAll(sanitized, overwrite);
+
+      // Rebuild search index after import
+      try { await this.search.buildIndex(); } catch { /* non-critical */ }
 
       this.audit.log(AuditAction.DATA_IMPORTED, actorId, actorRole, 'database', 'all');
 
