@@ -36,3 +36,6 @@ yarn-error.log*
 
 # App-generated export files (runtime only, not for repo)
 *.hpd
+
+# Docker
+.docker/

@@ -1,0 +1,6 @@
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+CMD ["sh", "-c", "npx jest unit_tests/ --coverage --forceExit --passWithNoTests && npx jest api_tests/ --runInBand --forceExit --passWithNoTests"]

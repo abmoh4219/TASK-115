@@ -1,16 +1,23 @@
 # HarborPoint — Resident & Services Management System
 
 A fully offline, browser-only Angular 17+ SPA for on-site property management.
-All data lives in IndexedDB and LocalStorage — no backend, no server, no Docker required.
+All data lives in IndexedDB and LocalStorage — no backend, no server required.
 
 ---
 
 ## How to Run
 
 ```bash
-npm install
-npm start
-# Access at http://localhost:4200
+docker compose up
+```
+
+Open http://localhost:4200
+The app loads immediately — no configuration needed.
+
+## How to Stop
+
+```bash
+docker compose down
 ```
 
 ---
@@ -29,16 +36,10 @@ npm start
 ## How to Run Tests
 
 ```bash
-chmod +x run_tests.sh
-./run_tests.sh
+docker compose run test
 ```
 
-Or individually:
-
-```bash
-npm run test:unit    # Unit tests with coverage
-npm run test:api     # Integration tests
-```
+Results are printed to the terminal. Both unit and integration test suites run automatically.
 
 ---
 
