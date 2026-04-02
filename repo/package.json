@@ -1,0 +1,70 @@
+{
+  "name": "harborpoint",
+  "version": "1.0.0",
+  "description": "HarborPoint Resident & Services Management System",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "test": "jest",
+    "test:unit": "jest unit_tests/ --coverage",
+    "test:api": "jest api_tests/ --runInBand",
+    "lint": "ng lint"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^17.3.0",
+    "@angular/cdk": "^17.3.0",
+    "@angular/common": "^17.3.0",
+    "@angular/compiler": "^17.3.0",
+    "@angular/core": "^17.3.0",
+    "@angular/forms": "^17.3.0",
+    "@angular/material": "^17.3.0",
+    "@angular/platform-browser": "^17.3.0",
+    "@angular/platform-browser-dynamic": "^17.3.0",
+    "@angular/router": "^17.3.0",
+    "chart.js": "^4.4.0",
+    "dexie": "^3.2.4",
+    "dompurify": "^3.1.0",
+    "file-saver": "^2.0.5",
+    "lunr": "^2.3.9",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.14.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^17.3.0",
+    "@angular/cli": "^17.3.0",
+    "@angular/compiler-cli": "^17.3.0",
+    "@types/dompurify": "^3.0.5",
+    "@types/file-saver": "^2.0.7",
+    "@types/jest": "^29.5.11",
+    "@types/lunr": "^2.3.7",
+    "@types/node": "^18.18.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-preset-angular": "^14.0.3",
+    "fake-indexeddb": "^5.0.2",
+    "ts-node": "^10.9.1",
+    "typescript": "~5.3.0"
+  },
+  "jest": {
+    "preset": "jest-preset-angular",
+    "setupFilesAfterFramework": [
+      "<rootDir>/setup-jest.ts"
+    ],
+    "testEnvironment": "jsdom",
+    "moduleNameMapper": {
+      "@core/(.*)": "<rootDir>/src/app/core/$1",
+      "@shared/(.*)": "<rootDir>/src/app/shared/$1",
+      "@features/(.*)": "<rootDir>/src/app/features/$1"
+    },
+    "coverageDirectory": "jest-coverage",
+    "collectCoverageFrom": [
+      "src/app/**/*.ts",
+      "!src/app/**/*.module.ts",
+      "!src/app/**/*.component.ts",
+      "!src/main.ts"
+    ]
+  }
+}

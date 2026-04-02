@@ -1,0 +1,246 @@
+// =====================================================
+// HarborPoint Global Styles
+// Deep Navy (#1E3A5F) / Teal (#2DD4BF) Theme
+// =====================================================
+
+@use '@angular/material' as mat;
+
+// --- Custom Palette: Deep Navy ---
+$harbor-navy-palette: (
+  50: #e3eaf3,
+  100: #b9cbe0,
+  200: #8ba9cc,
+  300: #5c87b8,
+  400: #396da8,
+  500: #1e3a5f,
+  600: #1a3457,
+  700: #152c4d,
+  800: #112443,
+  900: #0a1732,
+  A100: #6b9fff,
+  A200: #3880ff,
+  A400: #0560ff,
+  A700: #0057eb,
+  contrast: (
+    50: #000000,
+    100: #000000,
+    200: #000000,
+    300: #ffffff,
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+    A100: #000000,
+    A200: #ffffff,
+    A400: #ffffff,
+    A700: #ffffff,
+  )
+);
+
+// --- Custom Palette: Teal Accent ---
+$harbor-teal-palette: (
+  50: #e6faf8,
+  100: #c0f2ed,
+  200: #96e9e1,
+  300: #6ce0d5,
+  400: #4dd9cb,
+  500: #2dd4bf,
+  600: #28cfb9,
+  700: #22c9b1,
+  800: #1cc3a9,
+  900: #11b99b,
+  A100: #eefffc,
+  A200: #bbfffb,
+  A400: #88fff8,
+  A700: #6efff6,
+  contrast: (
+    50: #000000,
+    100: #000000,
+    200: #000000,
+    300: #000000,
+    400: #000000,
+    500: #000000,
+    600: #000000,
+    700: #000000,
+    800: #000000,
+    900: #000000,
+    A100: #000000,
+    A200: #000000,
+    A400: #000000,
+    A700: #000000,
+  )
+);
+
+$harbor-primary: mat.define-palette($harbor-navy-palette, 500);
+$harbor-accent:  mat.define-palette($harbor-teal-palette, 500);
+$harbor-warn:    mat.define-palette(mat.$red-palette);
+
+$harbor-theme: mat.define-light-theme((
+  color: (
+    primary: $harbor-primary,
+    accent:  $harbor-accent,
+    warn:    $harbor-warn,
+  ),
+  typography: mat.define-typography-config(
+    $font-family: 'Inter, system-ui, sans-serif',
+  ),
+  density: 0,
+));
+
+@include mat.all-component-themes($harbor-theme);
+
+// --- CSS Custom Properties ---
+:root {
+  --hp-navy:        #1E3A5F;
+  --hp-navy-dark:   #152c4d;
+  --hp-navy-light:  #396da8;
+  --hp-teal:        #2DD4BF;
+  --hp-teal-dark:   #22c9b1;
+  --hp-teal-light:  #6ce0d5;
+  --hp-white:       #ffffff;
+  --hp-bg:          #f8fafc;
+  --hp-border:      #e2e8f0;
+  --hp-text:        #1e293b;
+  --hp-text-muted:  #64748b;
+  --hp-danger:      #ef4444;
+  --hp-warning:     #f59e0b;
+  --hp-success:     #10b981;
+  --hp-sidebar-w:   240px;
+  --hp-topbar-h:    64px;
+  --hp-radius:      8px;
+  --hp-shadow:      0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --hp-shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+// --- Reset & Base ---
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--hp-bg);
+  color: var(--hp-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+// --- Typography ---
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: var(--hp-navy);
+  margin: 0 0 0.5rem 0;
+}
+
+// --- Angular Material Overrides ---
+.mat-mdc-button.mat-primary {
+  background-color: var(--hp-navy);
+  color: var(--hp-white);
+}
+
+.mat-mdc-raised-button.mat-primary {
+  background-color: var(--hp-navy);
+  color: var(--hp-white);
+}
+
+.mat-mdc-raised-button.mat-accent {
+  background-color: var(--hp-teal);
+  color: var(--hp-navy);
+}
+
+// --- Scrollbar ---
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--hp-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hp-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hp-text-muted);
+}
+
+// --- Utilities ---
+.hp-card {
+  background: var(--hp-white);
+  border: 1px solid var(--hp-border);
+  border-radius: var(--hp-radius);
+  padding: 1.5rem;
+  box-shadow: var(--hp-shadow);
+}
+
+.hp-page {
+  padding: 2rem;
+  max-width: 1600px;
+}
+
+.hp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--hp-text-muted);
+
+  .hp-empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+
+  h3 {
+    color: var(--hp-text-muted);
+    margin-bottom: 0.5rem;
+  }
+}
+
+.hp-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &.hp-badge--primary   { background: var(--hp-navy); color: var(--hp-white); }
+  &.hp-badge--accent    { background: var(--hp-teal); color: var(--hp-navy); }
+  &.hp-badge--success   { background: #dcfce7; color: #16a34a; }
+  &.hp-badge--warning   { background: #fef9c3; color: #ca8a04; }
+  &.hp-badge--danger    { background: #fee2e2; color: #dc2626; }
+  &.hp-badge--neutral   { background: var(--hp-bg); color: var(--hp-text-muted); border: 1px solid var(--hp-border); }
+}
+
+.hp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+// --- Angular Material Form Field ---
+.mat-mdc-form-field {
+  width: 100%;
+}
