@@ -1,177 +1,206 @@
 import {
   Component, Input, Output, EventEmitter,
-  OnChanges, SimpleChanges,
+  OnChanges, SimpleChanges, ContentChildren,
+  QueryList, TemplateRef, AfterContentInit,
+  ChangeDetectionStrategy, ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatTableModule } from '@angular/material/table';
-import { MatSortModule, Sort } from '@angular/material/sort';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
-import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+// =====================================================
+// Public interfaces
+// =====================================================
 
 export interface TableColumn {
   key: string;
-  label: string;
+  header: string;
   sortable?: boolean;
   width?: string;
+  /** Optional custom cell template, referenced by key in parent */
+  template?: TemplateRef<{ $implicit: unknown; row: Record<string, unknown> }>;
 }
+
+export type SortDirection = 'asc' | 'desc' | '';
+
+export interface SortState {
+  column: string;
+  direction: SortDirection;
+}
+
+// =====================================================
+// Component
+// =====================================================
 
 @Component({
   selector: 'app-table',
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    MatTableModule, MatSortModule, MatPaginatorModule,
-    MatIconModule, MatButtonModule, MatInputModule, MatFormFieldModule,
+    MatButtonModule, MatIconModule,
+    MatSelectModule, MatFormFieldModule,
+    MatTooltipModule,
   ],
-  template: `
-    <div class="table-wrapper">
-      <!-- Search bar (optional) -->
-      <div *ngIf="searchable" class="table-toolbar">
-        <mat-form-field appearance="outline" class="table-search">
-          <mat-label>Search</mat-label>
-          <input matInput [(ngModel)]="searchText" (input)="onSearch()" placeholder="Filter results...">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-      </div>
-
-      <!-- Table -->
-      <div class="table-scroll">
-        <table mat-table [dataSource]="pagedRows" matSort (matSortChange)="onSort($event)" class="hp-table">
-          <ng-container *ngFor="let col of columns" [matColumnDef]="col.key">
-            <th mat-header-cell *matHeaderCellDef [mat-sort-header]="col.sortable ? col.key : ''" [style.width]="col.width">
-              {{ col.label }}
-            </th>
-            <td mat-cell *matCellDef="let row">
-              {{ row[col.key] }}
-            </td>
-          </ng-container>
-
-          <!-- Actions column -->
-          <ng-container matColumnDef="_actions">
-            <th mat-header-cell *matHeaderCellDef class="col-actions">Actions</th>
-            <td mat-cell *matCellDef="let row" class="col-actions">
-              <ng-content select="[table-actions]"></ng-content>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr
-            mat-row
-            *matRowDef="let row; columns: displayedColumns;"
-            [class.row-clickable]="rowClickable"
-            (click)="rowClick.emit(row)"
-          ></tr>
-
-          <!-- Empty state -->
-          <tr class="mat-row" *matNoDataRow>
-            <td [colSpan]="displayedColumns.length" class="table-empty">
-              <div class="hp-empty-state">
-                <mat-icon class="hp-empty-icon">inbox</mat-icon>
-                <h3>{{ emptyMessage }}</h3>
-              </div>
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- Paginator -->
-      <mat-paginator
-        *ngIf="paginate"
-        [length]="filteredRows.length"
-        [pageSize]="pageSize"
-        [pageSizeOptions]="[10, 25, 50, 100]"
-        (page)="onPage($event)"
-        showFirstLastButtons
-      ></mat-paginator>
-    </div>
-  `,
-  styles: [`
-    .table-wrapper { display: flex; flex-direction: column; }
-    .table-toolbar { padding: 1rem 0 0.5rem; }
-    .table-search { max-width: 320px; }
-    .table-scroll { overflow-x: auto; }
-    .hp-table { width: 100%; }
-    .row-clickable { cursor: pointer; }
-    .row-clickable:hover { background: var(--hp-bg); }
-    .table-empty { padding: 0; }
-    .col-actions { width: 120px; text-align: right; }
-    th.mat-header-cell { color: var(--hp-text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-  `],
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TableComponent implements OnChanges {
+export class TableComponent implements OnChanges, AfterContentInit {
+
+  // --------------------------------------------------
+  // Inputs
+  // --------------------------------------------------
+
   @Input() columns: TableColumn[] = [];
-  @Input() rows: Record<string, unknown>[] = [];
-  @Input() searchable = false;
-  @Input() paginate = true;
-  @Input() pageSize = 25;
-  @Input() rowClickable = false;
-  @Input() showActions = false;
-  @Input() emptyMessage = 'No data available';
+  @Input() data: Record<string, unknown>[] = [];
+  @Input() loading = false;
+  @Input() emptyMessage = 'No records found';
+  @Input() emptyIcon = 'inbox';
+
+  // --------------------------------------------------
+  // Outputs
+  // --------------------------------------------------
 
   @Output() rowClick = new EventEmitter<Record<string, unknown>>();
+  @Output() sortChange = new EventEmitter<SortState>();
 
-  displayedColumns: string[] = [];
-  filteredRows: Record<string, unknown>[] = [];
-  pagedRows: Record<string, unknown>[] = [];
-  searchText = '';
-  private currentPage = 0;
-  private sortState: Sort = { active: '', direction: '' };
+  // --------------------------------------------------
+  // Internal state
+  // --------------------------------------------------
+
+  sortState: SortState = { column: '', direction: '' };
+
+  pageSize = 25;
+  pageSizeOptions = [10, 25, 50, 100];
+  currentPage = 0;
+
+  filteredData: Record<string, unknown>[] = [];
+  pagedData:    Record<string, unknown>[] = [];
+  skeletonRows = Array(5).fill(null);
+
+  constructor(private cdr: ChangeDetectorRef) {}
+
+  // --------------------------------------------------
+  // Lifecycle
+  // --------------------------------------------------
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['columns']) {
-      this.displayedColumns = [
-        ...this.columns.map(c => c.key),
-        ...(this.showActions ? ['_actions'] : []),
-      ];
+    if (changes['data'] || changes['columns']) {
+      this.applySort();
     }
-    if (changes['rows']) {
-      this.filteredRows = [...this.rows];
+  }
+
+  ngAfterContentInit(): void {}
+
+  // --------------------------------------------------
+  // Sorting
+  // --------------------------------------------------
+
+  onHeaderClick(col: TableColumn): void {
+    if (!col.sortable) return;
+    const key = col.key;
+
+    if (this.sortState.column === key) {
+      if (this.sortState.direction === 'asc')  this.sortState = { column: key, direction: 'desc' };
+      else if (this.sortState.direction === 'desc') this.sortState = { column: '', direction: '' };
+      else this.sortState = { column: key, direction: 'asc' };
+    } else {
+      this.sortState = { column: key, direction: 'asc' };
+    }
+
+    this.currentPage = 0;
+    this.applySort();
+    this.sortChange.emit({ ...this.sortState });
+  }
+
+  private applySort(): void {
+    let sorted = [...(this.data ?? [])];
+
+    if (this.sortState.column && this.sortState.direction) {
+      const dir = this.sortState.direction === 'asc' ? 1 : -1;
+      const key = this.sortState.column;
+      sorted.sort((a, b) => {
+        const av = a[key] ?? '';
+        const bv = b[key] ?? '';
+        // Numeric sort if both values coerce to numbers
+        const an = Number(av), bn = Number(bv);
+        if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
+        return String(av).localeCompare(String(bv)) * dir;
+      });
+    }
+
+    this.filteredData = sorted;
+    this.updatePage();
+    this.cdr.markForCheck();
+  }
+
+  // --------------------------------------------------
+  // Pagination
+  // --------------------------------------------------
+
+  get totalPages(): number {
+    return Math.ceil(this.filteredData.length / this.pageSize);
+  }
+
+  get rangeStart(): number {
+    return this.filteredData.length === 0 ? 0 : this.currentPage * this.pageSize + 1;
+  }
+
+  get rangeEnd(): number {
+    return Math.min((this.currentPage + 1) * this.pageSize, this.filteredData.length);
+  }
+
+  prevPage(): void {
+    if (this.currentPage > 0) {
+      this.currentPage--;
       this.updatePage();
     }
   }
 
-  onSearch(): void {
-    const q = this.searchText.toLowerCase();
-    this.filteredRows = q
-      ? this.rows.filter(r =>
-          Object.values(r).some(v => String(v).toLowerCase().includes(q))
-        )
-      : [...this.rows];
+  nextPage(): void {
+    if (this.currentPage < this.totalPages - 1) {
+      this.currentPage++;
+      this.updatePage();
+    }
+  }
+
+  onPageSizeChange(): void {
     this.currentPage = 0;
     this.updatePage();
   }
 
-  onSort(sort: Sort): void {
-    this.sortState = sort;
-    if (!sort.active || sort.direction === '') {
-      this.filteredRows = [...this.rows];
-    } else {
-      this.filteredRows = [...this.filteredRows].sort((a, b) => {
-        const valA = a[sort.active];
-        const valB = b[sort.active];
-        const cmp = String(valA) < String(valB) ? -1 : String(valA) > String(valB) ? 1 : 0;
-        return sort.direction === 'asc' ? cmp : -cmp;
-      });
-    }
-    this.updatePage();
-  }
-
-  onPage(event: PageEvent): void {
-    this.currentPage = event.pageIndex;
-    this.pageSize = event.pageSize;
-    this.updatePage();
-  }
-
   private updatePage(): void {
-    if (!this.paginate) {
-      this.pagedRows = this.filteredRows;
-      return;
-    }
     const start = this.currentPage * this.pageSize;
-    this.pagedRows = this.filteredRows.slice(start, start + this.pageSize);
+    this.pagedData = this.filteredData.slice(start, start + this.pageSize);
+    this.cdr.markForCheck();
+  }
+
+  // --------------------------------------------------
+  // Helpers for template
+  // --------------------------------------------------
+
+  sortIcon(col: TableColumn): string {
+    if (!col.sortable) return '';
+    if (this.sortState.column !== col.key) return 'unfold_more';
+    return this.sortState.direction === 'asc' ? 'arrow_upward' : 'arrow_downward';
+  }
+
+  isSorted(col: TableColumn): boolean {
+    return this.sortState.column === col.key && this.sortState.direction !== '';
+  }
+
+  cellValue(row: Record<string, unknown>, key: string): unknown {
+    // Support dot-notation keys: e.g. "user.name"
+    return key.split('.').reduce((obj: unknown, k) => {
+      return obj && typeof obj === 'object' ? (obj as Record<string, unknown>)[k] : undefined;
+    }, row);
+  }
+
+  trackByIndex(index: number): number {
+    return index;
   }
 }

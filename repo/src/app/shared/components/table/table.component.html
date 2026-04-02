@@ -1,0 +1,136 @@
+<!-- ================================================
+     app-table — HarborPoint sortable/paginated table
+     ================================================ -->
+<div class="hp-table-wrapper">
+
+  <!-- Loading skeleton -->
+  <ng-container *ngIf="loading">
+    <table class="hp-table" role="table" aria-busy="true" aria-label="Loading data">
+      <thead>
+        <tr>
+          <th *ngFor="let col of columns" [style.width]="col.width" class="hp-table__th">
+            <span class="skeleton skeleton--text"></span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let _ of skeletonRows" class="hp-table__row hp-table__row--skeleton">
+          <td *ngFor="let col of columns; let i = index" class="hp-table__td">
+            <span class="skeleton" [class.skeleton--short]="i % 3 === 2"></span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </ng-container>
+
+  <!-- Real table -->
+  <ng-container *ngIf="!loading">
+
+    <!-- Empty state -->
+    <div *ngIf="!loading && filteredData.length === 0" class="hp-table__empty">
+      <mat-icon class="hp-table__empty-icon">{{ emptyIcon }}</mat-icon>
+      <p class="hp-table__empty-msg">{{ emptyMessage }}</p>
+      <ng-content select="[table-empty-action]"></ng-content>
+    </div>
+
+    <!-- Data table -->
+    <div *ngIf="filteredData.length > 0" class="hp-table__scroll-host">
+      <table class="hp-table" role="table">
+        <thead class="hp-table__head">
+          <tr>
+            <th
+              *ngFor="let col of columns"
+              class="hp-table__th"
+              [class.hp-table__th--sortable]="col.sortable"
+              [class.hp-table__th--sorted]="isSorted(col)"
+              [style.width]="col.width"
+              (click)="onHeaderClick(col)"
+              [attr.aria-sort]="col.sortable ? (isSorted(col) ? sortState.direction : 'none') : null"
+            >
+              <span class="hp-table__th-inner">
+                <span class="hp-table__th-label">{{ col.header }}</span>
+                <mat-icon
+                  *ngIf="col.sortable"
+                  class="hp-table__sort-icon"
+                  [class.hp-table__sort-icon--active]="isSorted(col)"
+                  aria-hidden="true"
+                >{{ sortIcon(col) }}</mat-icon>
+              </span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let row of pagedData; trackBy: trackByIndex"
+            class="hp-table__row"
+            [class.hp-table__row--clickable]="rowClick.observed"
+            (click)="rowClick.observed && rowClick.emit(row)"
+          >
+            <td
+              *ngFor="let col of columns"
+              class="hp-table__td"
+              [style.width]="col.width"
+            >
+              <!-- Custom cell template -->
+              <ng-container *ngIf="col.template; else defaultCell">
+                <ng-container
+                  *ngTemplateOutlet="col.template; context: { $implicit: cellValue(row, col.key), row: row }"
+                ></ng-container>
+              </ng-container>
+
+              <!-- Default: render as string -->
+              <ng-template #defaultCell>
+                <span class="hp-table__cell-text">{{ cellValue(row, col.key) }}</span>
+              </ng-template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination bar -->
+    <div *ngIf="filteredData.length > 0" class="hp-table__pagination">
+      <div class="hp-table__page-size">
+        <label class="hp-table__page-label" for="pageSizeSelect">Rows per page</label>
+        <select
+          id="pageSizeSelect"
+          class="hp-table__page-select"
+          [(ngModel)]="pageSize"
+          (change)="onPageSizeChange()"
+          aria-label="Rows per page"
+        >
+          <option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ opt }}</option>
+        </select>
+      </div>
+
+      <span class="hp-table__range-label" aria-live="polite" aria-atomic="true">
+        {{ rangeStart }}–{{ rangeEnd }} of {{ filteredData.length }}
+      </span>
+
+      <div class="hp-table__page-nav">
+        <button
+          class="hp-table__nav-btn"
+          (click)="prevPage()"
+          [disabled]="currentPage === 0"
+          aria-label="Previous page"
+          matTooltip="Previous page"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <button
+          class="hp-table__nav-btn"
+          (click)="nextPage()"
+          [disabled]="currentPage >= totalPages - 1"
+          aria-label="Next page"
+          matTooltip="Next page"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </div>
+
+  </ng-container>
+</div>
+
+<!-- trackByIndex helper exposed on component for ngFor -->
+<ng-template #trackByIndex let-i="index">{{ i }}</ng-template>

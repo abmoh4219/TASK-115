@@ -1,0 +1,93 @@
+<!-- ================================================
+     app-modal — centered overlay modal
+     ================================================ -->
+<ng-container *ngIf="visible">
+
+  <!-- Overlay / backdrop -->
+  <div
+    class="modal-overlay"
+    [class.modal-overlay--visible]="animating"
+    (click)="onOverlayClick($event)"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="'modal-title-' + title"
+  >
+
+    <!-- Panel -->
+    <div
+      #modalPanel
+      class="modal-panel"
+      [class.modal-panel--visible]="animating"
+      [class.modal-panel--sm]="size === 'sm'"
+      [class.modal-panel--md]="size === 'md'"
+      [class.modal-panel--lg]="size === 'lg'"
+      [class.modal-panel--danger]="type === 'danger'"
+      [class.modal-panel--warning]="type === 'warning'"
+      (click)="$event.stopPropagation()"
+    >
+
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="modal-header__left">
+          <mat-icon
+            *ngIf="iconForType"
+            class="modal-header__icon"
+            [class.modal-header__icon--danger]="type === 'danger'"
+            [class.modal-header__icon--warning]="type === 'warning'"
+            aria-hidden="true"
+          >{{ iconForType }}</mat-icon>
+          <h2 class="modal-header__title" [id]="'modal-title-' + title">
+            {{ title }}
+          </h2>
+        </div>
+        <button
+          class="modal-close"
+          (click)="onCancel()"
+          [disabled]="loading"
+          aria-label="Close dialog"
+          type="button"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- Body (projected content) -->
+      <div class="modal-body">
+        <ng-content></ng-content>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <!-- Custom footer slot (optional override) -->
+        <ng-content select="[modal-footer]"></ng-content>
+
+        <!-- Default actions -->
+        <ng-container *ngIf="!confirmOnly">
+          <button
+            class="modal-btn modal-btn--cancel"
+            (click)="onCancel()"
+            [disabled]="loading"
+            type="button"
+          >
+            {{ cancelLabel }}
+          </button>
+        </ng-container>
+
+        <button
+          #confirmBtn
+          class="modal-btn modal-btn--confirm"
+          [class.modal-btn--danger]="type === 'danger'"
+          [class.modal-btn--warning]="type === 'warning'"
+          (click)="onConfirm()"
+          [disabled]="loading || confirmDisabled"
+          type="button"
+        >
+          <mat-spinner *ngIf="loading" diameter="16" class="modal-btn__spinner"></mat-spinner>
+          <span *ngIf="!loading">{{ confirmLabel }}</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</ng-container>

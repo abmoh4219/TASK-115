@@ -1,0 +1,51 @@
+<!-- ================================================
+     app-drawer — right-side slide-in panel
+     ================================================ -->
+<ng-container *ngIf="visible">
+
+  <!-- Backdrop -->
+  <div
+    class="drawer-backdrop"
+    [class.drawer-backdrop--visible]="animating"
+    (click)="onBackdropClick()"
+    aria-hidden="true"
+  ></div>
+
+  <!-- Panel -->
+  <aside
+    class="drawer-panel"
+    [class.drawer-panel--open]="animating"
+    role="complementary"
+    [attr.aria-label]="title"
+    [attr.aria-hidden]="!open"
+  >
+
+    <!-- Header (fixed) -->
+    <header class="drawer-header">
+      <div class="drawer-header__text">
+        <h2 class="drawer-header__title">{{ title }}</h2>
+        <p *ngIf="subtitle" class="drawer-header__subtitle">{{ subtitle }}</p>
+      </div>
+      <button
+        class="drawer-close"
+        (click)="close()"
+        aria-label="Close panel"
+        type="button"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+
+    <!-- Body (scrollable) -->
+    <div class="drawer-body">
+      <ng-content></ng-content>
+    </div>
+
+    <!-- Footer (fixed, optional) -->
+    <footer class="drawer-footer">
+      <ng-content select="[drawer-footer]"></ng-content>
+    </footer>
+
+  </aside>
+
+</ng-container>

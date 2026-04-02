@@ -8,8 +8,17 @@ export interface Toast {
   type: ToastType;
   message: string;
   title?: string;
-  durationMs?: number;
+  durationMs: number;
 }
+
+const MAX_TOASTS = 5;
+
+const DEFAULT_DURATIONS: Record<ToastType, number> = {
+  success: 4000,
+  error:   6000,
+  warning: 5000,
+  info:    4000,
+};
 
 @Injectable({ providedIn: 'root' })
 export class ToastService {
@@ -17,32 +26,55 @@ export class ToastService {
   private _toasts$ = new BehaviorSubject<Toast[]>([]);
   readonly toasts$ = this._toasts$.asObservable();
 
-  show(type: ToastType, message: string, title?: string, durationMs = 4000): void {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // --------------------------------------------------
+  // Core show method
+  // --------------------------------------------------
+
+  show(message: string, type: ToastType = 'info', duration?: number, title?: string): string {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const durationMs = duration ?? DEFAULT_DURATIONS[type];
+
     const toast: Toast = { id, type, message, title, durationMs };
 
-    this._toasts$.next([...this._toasts$.value, toast]);
+    // Cap at MAX_TOASTS — remove oldest if needed
+    const current = this._toasts$.value;
+    const next = current.length >= MAX_TOASTS
+      ? [...current.slice(1), toast]
+      : [...current, toast];
 
+    this._toasts$.next(next);
+
+    // Auto-dismiss
     if (durationMs > 0) {
       setTimeout(() => this.dismiss(id), durationMs);
     }
+
+    return id;
   }
 
-  success(message: string, title?: string): void {
-    this.show('success', message, title);
+  // --------------------------------------------------
+  // Convenience methods
+  // --------------------------------------------------
+
+  success(message: string, title?: string, duration?: number): string {
+    return this.show(message, 'success', duration, title);
   }
 
-  error(message: string, title?: string): void {
-    this.show('error', message, title, 6000);
+  error(message: string, title?: string, duration?: number): string {
+    return this.show(message, 'error', duration, title);
   }
 
-  warning(message: string, title?: string): void {
-    this.show('warning', message, title, 5000);
+  warning(message: string, title?: string, duration?: number): string {
+    return this.show(message, 'warning', duration, title);
   }
 
-  info(message: string, title?: string): void {
-    this.show('info', message, title);
+  info(message: string, title?: string, duration?: number): string {
+    return this.show(message, 'info', duration, title);
   }
+
+  // --------------------------------------------------
+  // Dismiss
+  // --------------------------------------------------
 
   dismiss(id: string): void {
     this._toasts$.next(this._toasts$.value.filter(t => t.id !== id));
@@ -50,5 +82,9 @@ export class ToastService {
 
   clear(): void {
     this._toasts$.next([]);
+  }
+
+  get count(): number {
+    return this._toasts$.value.length;
   }
 }

@@ -1,127 +1,183 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  Component, Input, Output, EventEmitter,
+  OnChanges, SimpleChanges, AfterViewInit,
+  ElementRef, ViewChild, HostListener,
+  ChangeDetectionStrategy, ChangeDetectorRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+
+export type ModalSize = 'sm' | 'md' | 'lg';
+export type ModalType = 'default' | 'danger' | 'warning';
 
 @Component({
   selector: 'app-modal',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatDialogModule],
-  template: `
-    <div *ngIf="open" class="modal-overlay" (click)="onOverlayClick($event)" role="dialog" [attr.aria-label]="title">
-      <div class="modal-panel mat-elevation-z16" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <div class="modal-header-left">
-            <mat-icon *ngIf="icon" class="modal-icon modal-icon--{{ iconColor }}">{{ icon }}</mat-icon>
-            <h2 class="modal-title">{{ title }}</h2>
-          </div>
-          <button *ngIf="dismissable" mat-icon-button (click)="cancel.emit()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-
-        <div class="modal-body">
-          <ng-content></ng-content>
-        </div>
-
-        <div *ngIf="showActions" class="modal-footer">
-          <button *ngIf="cancelLabel" mat-stroked-button (click)="cancel.emit()" [disabled]="loading">
-            {{ cancelLabel }}
-          </button>
-          <button
-            mat-raised-button
-            [color]="confirmColor"
-            (click)="confirm.emit()"
-            [disabled]="loading || confirmDisabled"
-            class="modal-confirm-btn"
-          >
-            <mat-icon *ngIf="!loading">{{ confirmIcon }}</mat-icon>
-            <mat-icon *ngIf="loading" class="spin">autorenew</mat-icon>
-            {{ confirmLabel }}
-          </button>
-        </div>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 1rem;
-    }
-    .modal-panel {
-      background: var(--hp-white);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 500px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--hp-border);
-    }
-    .modal-header-left {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .modal-icon { font-size: 1.5rem; }
-    .modal-icon--warn    { color: var(--hp-warning); }
-    .modal-icon--danger  { color: var(--hp-danger); }
-    .modal-icon--info    { color: var(--hp-teal); }
-    .modal-icon--success { color: var(--hp-success); }
-    .modal-title {
-      font-size: 1.125rem;
-      color: var(--hp-navy);
-      margin: 0;
-    }
-    .modal-body {
-      padding: 1.5rem;
-    }
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      padding: 1rem 1.5rem;
-      border-top: 1px solid var(--hp-border);
-    }
-    .spin {
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-  `],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  templateUrl: './modal.component.html',
+  styleUrls: ['./modal.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ModalComponent {
+export class ModalComponent implements OnChanges, AfterViewInit {
+
+  // --------------------------------------------------
+  // Inputs
+  // --------------------------------------------------
+
   @Input() open = false;
   @Input() title = '';
-  @Input() icon = '';
-  @Input() iconColor: 'warn' | 'danger' | 'info' | 'success' = 'info';
-  @Input() cancelLabel = 'Cancel';
+  @Input() size: ModalSize = 'md';
+  @Input() type: ModalType = 'default';
   @Input() confirmLabel = 'Confirm';
-  @Input() confirmIcon = 'check';
-  @Input() confirmColor: 'primary' | 'warn' | 'accent' = 'primary';
-  @Input() confirmDisabled = false;
+  @Input() cancelLabel = 'Cancel';
   @Input() loading = false;
-  @Input() showActions = true;
-  @Input() dismissable = true;
+  @Input() confirmDisabled = false;
+  /** When true, only the confirm button is shown (no cancel). */
+  @Input() confirmOnly = false;
 
-  @Output() confirm = new EventEmitter<void>();
-  @Output() cancel  = new EventEmitter<void>();
+  // --------------------------------------------------
+  // Outputs
+  // --------------------------------------------------
+
+  @Output() confirmed  = new EventEmitter<void>();
+  @Output() cancelled  = new EventEmitter<void>();
+
+  // --------------------------------------------------
+  // View refs
+  // --------------------------------------------------
+
+  @ViewChild('modalPanel') modalPanel?: ElementRef<HTMLDivElement>;
+  @ViewChild('confirmBtn') confirmBtn?: ElementRef<HTMLButtonElement>;
+
+  visible = false;
+  animating = false;
+
+  constructor(private cdr: ChangeDetectorRef) {}
+
+  // --------------------------------------------------
+  // Lifecycle
+  // --------------------------------------------------
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']) {
+      if (this.open) {
+        this.visible = true;
+        this.trapBodyScroll(true);
+        requestAnimationFrame(() => {
+          this.animating = true;
+          this.cdr.markForCheck();
+          // Focus the first focusable element
+          setTimeout(() => this.focusFirst(), 50);
+        });
+      } else {
+        this.animating = false;
+        this.cdr.markForCheck();
+        setTimeout(() => {
+          this.visible = false;
+          this.trapBodyScroll(false);
+          this.cdr.markForCheck();
+        }, 220);
+      }
+    }
+  }
+
+  ngAfterViewInit(): void {}
+
+  // --------------------------------------------------
+  // Keyboard handling
+  // --------------------------------------------------
+
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (!this.open) return;
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.onCancel();
+    }
+
+    // Focus trap — keep Tab within modal
+    if (event.key === 'Tab') {
+      this.trapFocus(event);
+    }
+  }
+
+  private trapFocus(event: KeyboardEvent): void {
+    const panel = this.modalPanel?.nativeElement;
+    if (!panel) return;
+
+    const focusable = panel.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last  = focusable[focusable.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  private focusFirst(): void {
+    const panel = this.modalPanel?.nativeElement;
+    if (!panel) return;
+    const first = panel.querySelector<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled)',
+    );
+    first?.focus();
+  }
+
+  // --------------------------------------------------
+  // Actions
+  // --------------------------------------------------
+
+  onConfirm(): void {
+    if (this.loading || this.confirmDisabled) return;
+    this.confirmed.emit();
+  }
+
+  onCancel(): void {
+    if (this.loading) return;
+    this.cancelled.emit();
+  }
 
   onOverlayClick(event: MouseEvent): void {
-    if (this.dismissable) this.cancel.emit();
+    // Only close if clicking the overlay itself, not the panel
+    if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
+      this.onCancel();
+    }
+  }
+
+  // --------------------------------------------------
+  // Helpers
+  // --------------------------------------------------
+
+  get iconForType(): string {
+    switch (this.type) {
+      case 'danger':  return 'error';
+      case 'warning': return 'warning';
+      default:        return '';
+    }
+  }
+
+  get confirmColor(): string {
+    return this.type === 'danger' ? 'warn' : 'primary';
+  }
+
+  private trapBodyScroll(lock: boolean): void {
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = lock ? 'hidden' : '';
+    }
   }
 }
