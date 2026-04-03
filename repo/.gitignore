@@ -39,3 +39,7 @@ yarn-error.log*
 
 # Docker
 .docker/
+.claude
+
+convert-ai-sessions.py
+session.jsonl
