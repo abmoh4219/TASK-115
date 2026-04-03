@@ -23,7 +23,7 @@ export interface SearchFacets {
 }
 
 // Lunr.js — use require() so it works under both Jest/CommonJS and esbuild/ESM
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+declare const require: (id: string) => any;
 const lunr: (config: (this: import('lunr').Builder) => void) => import('lunr').Index
   = require('lunr');
 

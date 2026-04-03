@@ -138,7 +138,7 @@ export class AnalyticsService {
 
     return {
       activeResidents,      activeResidentsDelta,
-      enrollmentsThisMonth, enrollmentsDelta: enrollmentsDelta,
+      enrollmentsThisMonth: enrollThisMonth, enrollmentsDelta: enrollmentsDelta,
       pendingReviews,       pendingReviewsDelta,
       messagesThisWeek: msgsThisWeek, messagesDelta: messagesDelta,
     };
@@ -163,7 +163,7 @@ export class AnalyticsService {
       const bUnitIds = new Set(bUnits.map(u => u.id));
       const bRooms  = rooms.filter(r => bUnitIds.has(r.unitId));
       const total   = bRooms.length;
-      const occ     = bRooms.filter(r => occupiedRoomIds.has(r.id)).length;
+      const occ     = bRooms.filter(r => occupiedRoomIds.has(r.id!)).length;
       return {
         buildingId:   b.id!,
         buildingName: b.name,

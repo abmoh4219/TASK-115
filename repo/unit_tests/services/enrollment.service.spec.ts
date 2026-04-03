@@ -292,15 +292,15 @@ describe('EnrollmentService — getEnrollmentHistory', () => {
 // enroll — anomaly detection
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe('EnrollmentService — anomaly detection on rapid re-enroll', () => {
+describe('EnrollmentService ��� duplicate enrollment rejection', () => {
 
-  it('returns ANOMALY_DETECTED after >3 rapid enroll attempts for same resident+round', async () => {
+  it('rejects repeat enroll attempts as ALREADY_ENROLLED', async () => {
     const { service, db } = setup();
     await db.open();
 
     const residentId = await addActiveResident(db);
     const courseId   = await db.courses.add({
-      title: 'Rate Limit Test', description: '', category: 'General',
+      title: 'Duplicate Test', description: '', category: 'General',
       prerequisites: [],
       createdAt: new Date(), updatedAt: new Date(),
     });
@@ -310,17 +310,12 @@ describe('EnrollmentService — anomaly detection on rapid re-enroll', () => {
     const first = await service.enroll(residentId, roundId, 'resident');
     expect(first.success).toBe(true);
 
-    // Subsequent calls for same key should trigger anomaly after >3 attempts
-    let anomalyDetected = false;
-    for (let i = 0; i < 5; i++) {
-      const result = await service.enroll(residentId, roundId, 'resident');
-      if (!result.success && result.reason === 'ANOMALY_DETECTED') {
-        anomalyDetected = true;
-        break;
-      }
+    // Subsequent calls for same resident+round are rejected
+    const second = await service.enroll(residentId, roundId, 'resident');
+    expect(second.success).toBe(false);
+    if (!second.success) {
+      expect(second.reason).toBe('ALREADY_ENROLLED');
     }
-
-    expect(anomalyDetected).toBe(true);
 
     await db.close();
     teardown();

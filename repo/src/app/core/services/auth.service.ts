@@ -64,7 +64,30 @@ export class AuthService implements OnDestroy {
   }
 
   // --------------------------------------------------
-  // Role Selection & Login
+  // Username + Password Login
+  // --------------------------------------------------
+
+  private static readonly VALID_USERNAMES: Record<string, UserRole> = {
+    admin:      'admin',
+    resident:   'resident',
+    compliance: 'compliance',
+    analyst:    'analyst',
+  };
+
+  async login(username: string, password: string): Promise<{ success: boolean; error?: string }> {
+    const role = AuthService.VALID_USERNAMES[username.trim().toLowerCase()];
+    if (!role) {
+      return { success: false, error: 'Invalid username or password' };
+    }
+    const ok = await this.selectRole(role, password);
+    if (!ok) {
+      return { success: false, error: 'Invalid username or password' };
+    }
+    return { success: true };
+  }
+
+  // --------------------------------------------------
+  // Role Selection (internal / re-auth)
   // --------------------------------------------------
 
   async selectRole(role: UserRole, password: string): Promise<boolean> {

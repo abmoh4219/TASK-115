@@ -136,7 +136,7 @@ import { DocumentService } from '../../core/services/document.service';
                   placeholder="Explain why this document is rejected…"
                   [rows]="4"
                   [maxLength]="500"
-                  [hint]="rejectNotesCtrl.value?.length < 10 ? 'Minimum 10 characters required' : ''"
+                  [hint]="(rejectNotesCtrl.value?.length ?? 0) < 10 ? 'Minimum 10 characters required' : ''"
                 ></app-textarea>
                 <div class="reject-form__actions">
                   <button class="btn-ghost" (click)="cancelReject()" [disabled]="saving">

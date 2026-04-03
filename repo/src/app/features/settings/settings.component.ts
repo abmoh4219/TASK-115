@@ -181,7 +181,7 @@ type SettingsSection = 'data' | 'dictionary' | 'safety' | 'templates' | 'prefere
             <div class="create-form">
               <input type="text" class="form-input" placeholder="Template name" [(ngModel)]="newTplName" />
               <input type="text" class="form-input" placeholder="Category" [(ngModel)]="newTplCategory" />
-              <textarea class="form-textarea" placeholder="Body (use {{residentName}} for merge fields)" [(ngModel)]="newTplBody" rows="4"></textarea>
+              <textarea class="form-textarea" [placeholder]="'Body (use {' + '{residentName}' + '} for merge fields)'" [(ngModel)]="newTplBody" rows="4"></textarea>
               <button class="btn-teal" (click)="createTemplate()" [disabled]="!newTplName.trim() || !newTplBody.trim()">
                 Create Template
               </button>

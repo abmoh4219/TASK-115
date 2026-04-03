@@ -107,18 +107,18 @@ describe('Search Integration — facets', () => {
   });
 
   it('filters by category', async () => {
-    const results = await service.search('resident', { category: 'resident' });
+    const results = await service.search('resident', undefined, { category: 'resident' });
     expect(results.every(r => r.entry.category === 'resident')).toBe(true);
   });
 
   it('filters by building', async () => {
-    const results = await service.search('community', { building: 'Harbor Tower' });
+    const results = await service.search('community', undefined, { building: 'Harbor Tower' });
     expect(results.every(r => r.entry.building === 'Harbor Tower')).toBe(true);
   });
 
   it('filters by date range excludes entries outside range', async () => {
     const pastFrom = new Date(Date.now() + 999999 * 1000); // far in future
-    const results = await service.search('resident', { from: pastFrom });
+    const results = await service.search('resident', undefined, { from: pastFrom });
     expect(results.length).toBe(0);
   });
 });

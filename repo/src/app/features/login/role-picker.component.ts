@@ -6,10 +6,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { AuthService, UserRole } from '../../core/services/auth.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-role-picker',
@@ -17,7 +16,7 @@ import { AuthService, UserRole } from '../../core/services/auth.service';
   imports: [
     CommonModule, FormsModule,
     MatCardModule, MatButtonModule, MatInputModule,
-    MatFormFieldModule, MatSelectModule, MatIconModule,
+    MatFormFieldModule, MatIconModule,
     MatProgressSpinnerModule,
   ],
   template: `
@@ -31,14 +30,18 @@ import { AuthService, UserRole } from '../../core/services/auth.service';
 
         <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
           <mat-form-field appearance="outline">
-            <mat-label>Role</mat-label>
-            <mat-select [(ngModel)]="selectedRole" name="role" required>
-              <mat-option value="admin">Property Administrator</mat-option>
-              <mat-option value="resident">Resident User</mat-option>
-              <mat-option value="compliance">Compliance Reviewer</mat-option>
-              <mat-option value="analyst">Operations Analyst</mat-option>
-            </mat-select>
-            <mat-icon matSuffix>people</mat-icon>
+            <mat-label>Username</mat-label>
+            <input
+              matInput
+              type="text"
+              [(ngModel)]="username"
+              name="username"
+              required
+              placeholder="Enter your username"
+              autocomplete="username"
+              (input)="clearError()"
+            />
+            <mat-icon matSuffix>person</mat-icon>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -49,7 +52,9 @@ import { AuthService, UserRole } from '../../core/services/auth.service';
               [(ngModel)]="password"
               name="password"
               required
+              placeholder="Enter your password"
               autocomplete="current-password"
+              (input)="clearError()"
             />
             <button mat-icon-button matSuffix type="button" (click)="showPassword = !showPassword">
               <mat-icon>{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
@@ -72,10 +77,6 @@ import { AuthService, UserRole } from '../../core/services/auth.service';
             <span *ngIf="!loading">Sign In</span>
           </button>
         </form>
-
-        <div class="login-hint">
-          <small>Default password: <code>harborpoint2024</code></small>
-        </div>
       </div>
     </div>
   `,
@@ -138,21 +139,10 @@ import { AuthService, UserRole } from '../../core/services/auth.service';
       display: inline-block;
       margin: 0 auto;
     }
-    .login-hint {
-      margin-top: 1.5rem;
-      text-align: center;
-      color: var(--hp-text-muted);
-    }
-    code {
-      background: var(--hp-bg);
-      padding: 0.125rem 0.375rem;
-      border-radius: 4px;
-      font-family: monospace;
-    }
   `],
 })
 export class RolePickerComponent implements OnInit {
-  selectedRole: UserRole = 'admin';
+  username = '';
   password = '';
   showPassword = false;
   loading = false;
@@ -164,14 +154,13 @@ export class RolePickerComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Pre-select last used role for UX convenience
-    const lastRole = this.auth.getLastRole();
-    if (lastRole) this.selectedRole = lastRole;
-
-    // Redirect if already logged in
     if (this.auth.isLoggedIn()) {
       this.navigateToDashboard();
     }
+  }
+
+  clearError(): void {
+    this.errorMessage = '';
   }
 
   async onSubmit(): Promise<void> {
@@ -179,11 +168,11 @@ export class RolePickerComponent implements OnInit {
     this.errorMessage = '';
 
     try {
-      const success = await this.auth.selectRole(this.selectedRole, this.password);
-      if (success) {
+      const result = await this.auth.login(this.username, this.password);
+      if (result.success) {
         this.navigateToDashboard();
       } else {
-        this.errorMessage = 'Invalid password. Please try again.';
+        this.errorMessage = result.error ?? 'Invalid username or password';
       }
     } finally {
       this.loading = false;

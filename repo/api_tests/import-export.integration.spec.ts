@@ -23,8 +23,8 @@ async function createHpdFile(
 ): Promise<File> {
   const json = JSON.stringify(data);
   const payload = await crypto.encrypt(json, password);
-  const blob = new Blob([JSON.stringify(payload)], { type: 'application/octet-stream' });
-  return new File([blob], 'test.hpd');
+  const payloadStr = JSON.stringify(payload);
+  return new File([payloadStr], 'test.hpd', { type: 'application/octet-stream' });
 }
 
 describe('Import/Export Integration — round trip', () => {

@@ -1065,9 +1065,11 @@ export class EnrollmentComponent implements OnInit, OnDestroy {
       this.roundsByCoursId.set(course.id!, rounds);
 
       // Get prereq check for current user (resident)
+      let prereqReason = '';
       if (course.id != null) {
         const prereqResult = await this.enrollSvc.checkPrerequisites(this.currentUserId, course.id);
         this.prereqDetails = true;
+        prereqReason = prereqResult.reason ?? '';
         for (const d of (prereqResult.details ?? [])) {
           this.prereqMetMap[this.prereqKey(d.prereq)] = d.met;
         }
@@ -1089,7 +1091,7 @@ export class EnrollmentComponent implements OnInit, OnDestroy {
           myEnrollment:     myE,
           waitlistPosition: wlPos,
           prereqMet:        Object.values(this.prereqMetMap).every(v => v),
-          prereqReason:     prereqResult.reason ?? '',
+          prereqReason,
         };
       }).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 

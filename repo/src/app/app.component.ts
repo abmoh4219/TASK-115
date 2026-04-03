@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatBadgeModule } from '@angular/material/badge';
 import { Subscription, filter } from 'rxjs';
 import { AuthService, UserRole } from './core/services/auth.service';
 import { MessagingService } from './core/services/messaging.service';
@@ -52,7 +53,7 @@ const HIDDEN_SIDEBAR_ROUTES = ['/login', '/unauthorized'];
   imports: [
     CommonModule, FormsModule, RouterModule,
     MatIconModule, MatButtonModule, MatTooltipModule,
-    MatInputModule, MatFormFieldModule,
+    MatInputModule, MatFormFieldModule, MatBadgeModule,
     ToastComponent, BadgeComponent, ModalComponent,
   ],
   template: `

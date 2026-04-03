@@ -67,6 +67,19 @@ if (typeof Blob !== 'undefined' && typeof Blob.prototype.arrayBuffer !== 'functi
   };
 }
 
+// ── Blob/File.text polyfill ──────────────────────────────────────────────
+// jsdom may not implement Blob.prototype.text; polyfill from arrayBuffer.
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
+  Blob.prototype.text = function (this: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+
 // ── structuredClone polyfill ─────────────────────────────────────────────────
 // jsdom does not forward the Node.js 17+ structuredClone global.
 // Use a pure-JS recursive deep-clone so objects are created in the CURRENT

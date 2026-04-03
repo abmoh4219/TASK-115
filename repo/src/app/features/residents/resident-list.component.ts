@@ -504,9 +504,9 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
 })
 export class ResidentListComponent implements OnInit, AfterViewInit {
 
-  @ViewChild('avatarTpl') avatarTpl!: TemplateRef<unknown>;
-  @ViewChild('statusTpl') statusTpl!: TemplateRef<unknown>;
-  @ViewChild('roomTpl')   roomTpl!:   TemplateRef<unknown>;
+  @ViewChild('avatarTpl') avatarTpl!: TemplateRef<any>;
+  @ViewChild('statusTpl') statusTpl!: TemplateRef<any>;
+  @ViewChild('roomTpl')   roomTpl!:   TemplateRef<any>;
 
   // --------------------------------------------------
   // Data
