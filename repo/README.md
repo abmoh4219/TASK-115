@@ -31,5 +31,18 @@ Enter a username and password on the login screen.
 
 Credentials are listed in the README only — they do not appear anywhere in the application UI.
 
+## Local Development (without Docker)
+```bash
+cd repo
+npm install
+npm start
+```
+Open http://localhost:4200
+```bash
+# Run tests locally
+npm run test:unit    # unit tests
+npm run test:api     # integration tests
+```
+
 ## Stack
 Angular 17 · TypeScript · IndexedDB (Dexie.js) · Web Crypto API · Lunr.js · Chart.js · Nginx · Docker

@@ -3,6 +3,7 @@ import { DbService, Message, Thread, MessageTemplate } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
 import { AuthService } from './auth.service';
 import { CryptoService } from './crypto.service';
+import { ContentPolicyService } from './content-policy.service';
 import DOMPurify from 'dompurify';
 
 // =====================================================
@@ -13,8 +14,7 @@ import DOMPurify from 'dompurify';
 const PHONE_PATTERN = /(\+?\d[\d\s\-(). ]{7,}\d)/g;
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
-/** App-level key used to encrypt originalBody at rest for audit purposes. */
-const ORIG_BODY_KEY = 'hp-msg-audit-key-v1';
+// originalBody encryption now uses the session-derived key via CryptoService
 
 export function maskSensitiveContent(raw: string): string {
   return raw
@@ -30,11 +30,19 @@ export function maskSensitiveContent(raw: string): string {
 export class MessagingService {
 
   constructor(
-    private db:     DbService,
-    private audit:  AuditService,
-    private auth:   AuthService,
-    private crypto: CryptoService,
+    private db:            DbService,
+    private audit:         AuditService,
+    private auth:          AuthService,
+    private crypto:        CryptoService,
+    private contentPolicy: ContentPolicyService,
   ) {}
+
+  private requireRole(...allowedRoles: string[]): void {
+    const current = this.auth.getCurrentRole();
+    if (!current || !allowedRoles.includes(current)) {
+      throw new Error(`Unauthorized: requires role ${allowedRoles.join(' or ')}`);
+    }
+  }
 
   // --------------------------------------------------
   // Threads
@@ -44,7 +52,11 @@ export class MessagingService {
    * Admin role → returns ALL threads (full admin visibility).
    * Other roles → only threads where participantIds includes userId.
    */
-  async getThreads(userId: number, role?: string): Promise<Thread[]> {
+  async getThreads(): Promise<Thread[]> {
+    const role = this.auth.getCurrentRole();
+    const userId = this.auth.getCurrentUserId();
+    if (!role || userId == null) throw new Error('Unauthorized: no active session');
+
     if (role === 'admin') {
       return this.db.threads
         .orderBy('lastMessageAt')
@@ -58,6 +70,19 @@ export class MessagingService {
   }
 
   async createThread(participantIds: number[], subject: string): Promise<Thread> {
+    const role = this.auth.getCurrentRole();
+    const userId = this.auth.getCurrentUserId();
+    if (!role || userId == null) throw new Error('Unauthorized: no active session');
+
+    if (participantIds.length > 0) {
+      if (participantIds.length < 2) {
+        throw new Error('Invalid: thread requires at least 2 participants');
+      }
+      if (!participantIds.includes(userId) && role !== 'admin') {
+        throw new Error('Unauthorized: sender must be a participant in the thread');
+      }
+    }
+
     const now = new Date();
     const id = await this.db.threads.add({
       participantIds,
@@ -78,21 +103,17 @@ export class MessagingService {
    * If an admin who is NOT a participant accesses the thread,
    * a MESSAGE_ADMIN_ACCESS audit entry is written per CLAUDE.md security requirements.
    */
-  async getMessages(
-    threadId: number,
-    requesterId?: number,
-    requesterRole?: string,
-  ): Promise<Message[]> {
-    if (requesterId !== undefined && requesterRole === 'admin') {
-      const thread = await this.db.threads.get(threadId);
-      if (thread && !thread.participantIds.includes(requesterId)) {
-        this.audit.log(
-          AuditAction.MESSAGE_ADMIN_ACCESS,
-          requesterId,
-          requesterRole,
-          'thread',
-          threadId,
-        );
+  async getMessages(threadId: number): Promise<Message[]> {
+    const role = this.auth.getCurrentRole();
+    const userId = this.auth.getCurrentUserId();
+    if (!role || userId == null) throw new Error('Unauthorized: no active session');
+
+    const thread = await this.db.threads.get(threadId);
+    if (thread) {
+      if (role === 'admin' && !thread.participantIds.includes(userId)) {
+        this.audit.log(AuditAction.MESSAGE_ADMIN_ACCESS, userId, role, 'thread', threadId);
+      } else if (role !== 'admin' && !thread.participantIds.includes(userId)) {
+        throw new Error('Unauthorized: not a participant in this thread');
       }
     }
 
@@ -114,20 +135,40 @@ export class MessagingService {
    */
   async sendMessage(params: {
     threadId:    number;
-    senderId:    number;
-    senderRole:  string;
     recipientId?: number;
     rawBody:     string;
     type:        'announcement' | 'direct';
     templateId?: number;
   }): Promise<Message> {
+    const senderId = this.auth.getCurrentUserId();
+    const senderRole = this.auth.getCurrentRole();
+    if (senderId == null || !senderRole) throw new Error('Unauthorized: no active session');
+
+    // Verify sender is participant (non-admin, non-announcement)
+    if (senderRole !== 'admin' && params.type !== 'announcement') {
+      const thread = await this.db.threads.get(params.threadId);
+      if (!thread) throw new Error('Thread not found');
+      if (!thread.participantIds.includes(senderId)) {
+        throw new Error('Unauthorized: sender is not a participant in this thread');
+      }
+    }
+
     const sanitized = DOMPurify.sanitize(params.rawBody);
     const masked    = maskSensitiveContent(sanitized);
+
+    // Content policy enforcement
+    const policyResult = await this.contentPolicy.evaluate(masked);
+    if (policyResult.action === 'block') {
+      throw new Error('Message blocked by content safety policy');
+    }
 
     // Encrypt original (pre-mask) body for audit trail
     let encryptedOriginal: string | undefined;
     try {
-      const payload = await this.crypto.encrypt(sanitized, ORIG_BODY_KEY);
+      const sessionKey = this.crypto.getSessionKey();
+      if (!sessionKey) throw new Error('No session key');
+      const { ciphertext, iv } = await this.crypto.encryptRaw(sanitized, sessionKey);
+      const payload = { ciphertext, iv };
       encryptedOriginal = JSON.stringify(payload);
     } catch {
       encryptedOriginal = undefined;
@@ -135,8 +176,8 @@ export class MessagingService {
 
     const id = await this.db.messages.add({
       threadId:     params.threadId,
-      senderId:     params.senderId,
-      senderRole:   params.senderRole,
+      senderId,
+      senderRole,
       recipientId:  params.recipientId,
       body:         masked,
       originalBody: encryptedOriginal,
@@ -149,19 +190,16 @@ export class MessagingService {
 
     await this.db.threads.update(params.threadId, { lastMessageAt: new Date() });
 
-    this.audit.log(
-      AuditAction.MESSAGE_SENT,
-      params.senderId,
-      params.senderRole,
-      'message',
-      id,
-    );
+    this.audit.log(AuditAction.MESSAGE_SENT, senderId, senderRole, 'message', id);
 
     const msg = await this.db.messages.get(id);
     return msg!;
   }
 
-  async deleteMessage(messageId: number, actorId: number, actorRole: string): Promise<void> {
+  async deleteMessage(messageId: number): Promise<void> {
+    this.requireRole('admin');
+    const actorId = this.auth.getCurrentUserId()!;
+    const actorRole = this.auth.getCurrentRole()!;
     const msg = await this.db.messages.get(messageId);
     if (!msg) throw new Error('Message not found');
 
@@ -171,14 +209,7 @@ export class MessagingService {
       deletedBy: actorId,
     });
 
-    this.audit.log(
-      AuditAction.MESSAGE_DELETED,
-      actorId,
-      actorRole,
-      'message',
-      messageId,
-      msg,
-    );
+    this.audit.log(AuditAction.MESSAGE_DELETED, actorId, actorRole, 'message', messageId, msg);
   }
 
   /**
@@ -186,7 +217,9 @@ export class MessagingService {
    * Called by IntersectionObserver when message scrolls into viewport.
    * Idempotent — no-op if already marked read.
    */
-  async markRead(messageId: number, userId: number): Promise<void> {
+  async markRead(messageId: number): Promise<void> {
+    const userId = this.auth.getCurrentUserId();
+    if (userId == null) return;
     const msg = await this.db.messages.get(messageId);
     if (!msg) return;
     if (msg.readBy.some(r => r.userId === userId)) return;
@@ -196,8 +229,10 @@ export class MessagingService {
     });
   }
 
-  async getUnreadCount(userId: number, role?: string): Promise<number> {
-    const threads = await this.getThreads(userId, role);
+  async getUnreadCount(): Promise<number> {
+    const userId = this.auth.getCurrentUserId();
+    if (userId == null) return 0;
+    const threads = await this.getThreads();
     let count = 0;
     for (const thread of threads) {
       const messages = await this.getMessages(thread.id!);
@@ -235,30 +270,17 @@ export class MessagingService {
   }
 
   async createAnnouncement(params: {
-    senderId:   number;
-    senderRole: string;
     subject:    string;
     rawBody:    string;
   }): Promise<{ thread: Thread; message: Message }> {
+    this.requireRole('admin');
     const thread  = await this.createThread([], params.subject);
     const message = await this.sendMessage({
       threadId:   thread.id!,
-      senderId:   params.senderId,
-      senderRole: params.senderRole,
       rawBody:    params.rawBody,
       type:       'announcement',
     });
     return { thread, message };
-  }
-
-  /** @deprecated Use createAnnouncement */
-  sendAnnouncement(params: {
-    senderId:   number;
-    senderRole: string;
-    subject:    string;
-    rawBody:    string;
-  }): Promise<{ thread: Thread; message: Message }> {
-    return this.createAnnouncement(params);
   }
 
   // --------------------------------------------------
@@ -280,6 +302,7 @@ export class MessagingService {
     category:  string;
     createdBy: number;
   }): Promise<MessageTemplate> {
+    this.requireRole('admin');
     const now = new Date();
     const id = await this.db.messageTemplates.add({
       name:      DOMPurify.sanitize(params.name),
@@ -292,5 +315,10 @@ export class MessagingService {
     });
     const tmpl = await this.db.messageTemplates.get(id);
     return tmpl!;
+  }
+
+  async deleteTemplate(id: number): Promise<void> {
+    this.requireRole('admin');
+    await this.db.messageTemplates.delete(id);
   }
 }

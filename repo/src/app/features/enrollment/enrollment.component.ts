@@ -50,10 +50,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   default:   'category',
 };
 
-// Role-to-userId mapping (demo)
-const ROLE_USER_ID: Record<string, number> = {
-  admin: 1, resident: 2, compliance: 3, analyst: 4,
-};
+// userId resolved from AuthService session
 
 @Component({
   selector: 'app-enrollment',
@@ -951,7 +948,7 @@ export class EnrollmentComponent implements OnInit, OnDestroy {
 
   get isAdmin():    boolean { return this.auth.hasRole('admin'); }
   get isResident(): boolean { return this.auth.hasRole('resident'); }
-  get currentUserId(): number { return ROLE_USER_ID[this.auth.getCurrentRole() ?? 'resident'] ?? 2; }
+  get currentUserId(): number { return this.auth.getCurrentUserId() ?? 0; }
   get upcomingCount(): number {
     const now = new Date();
     let count = 0;

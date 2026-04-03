@@ -220,7 +220,7 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
   styles: [`
     :host { display: block; }
 
-    // ── Page layout ────────────────────────────────
+    /* ── Page layout ──────────────────────────────── */
 
     .residents-page {
       padding: 1.75rem 2rem;
@@ -279,7 +279,7 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
       &:hover { background: #15304f; box-shadow: 0 4px 10px rgba(30,58,95,0.4); transform: translateY(-1px); }
     }
 
-    // ── Two-panel layout ───────────────────────────
+    /* ── Two-panel layout ─────────────────────────── */
 
     .panels {
       display: flex;
@@ -287,7 +287,7 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
       align-items: flex-start;
     }
 
-    // ── Sidebar ────────────────────────────────────
+    /* ── Sidebar ──────────────────────────────────── */
 
     .sidebar {
       width: 260px;
@@ -419,11 +419,11 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
       &:hover { color: #111827; }
     }
 
-    // ── Main panel ─────────────────────────────────
+    /* ── Main panel ───────────────────────────────── */
 
     .main-panel { flex: 1; min-width: 0; }
 
-    // ── Avatar cell ────────────────────────────────
+    /* ── Avatar cell ──────────────────────────────── */
 
     .avatar-cell {
       display: flex;
@@ -468,7 +468,7 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
       text-overflow: ellipsis;
     }
 
-    // ── Status chip ────────────────────────────────
+    /* ── Status chip ──────────────────────────────── */
 
     .status-chip {
       display: inline-flex;
@@ -485,7 +485,7 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
       &--pending   { background: #fef3c7; color: #92400e; }
     }
 
-    // ── Room tag ───────────────────────────────────
+    /* ── Room tag ─────────────────────────────────── */
 
     .room-tag {
       display: inline-flex;

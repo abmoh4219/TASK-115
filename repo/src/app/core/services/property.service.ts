@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { DbService, Building, Unit, Room, Occupancy, Resident } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
+import { AuthService } from './auth.service';
 import DOMPurify from 'dompurify';
 
 export enum ReasonCode {
@@ -22,7 +23,15 @@ export class PropertyService {
   constructor(
     private db: DbService,
     private audit: AuditService,
+    private authService: AuthService,
   ) {}
+
+  private requireRole(...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    if (!current || !allowedRoles.includes(current)) {
+      throw new Error(`Unauthorized: requires role ${allowedRoles.join(' or ')}`);
+    }
+  }
 
   // --------------------------------------------------
   // Buildings
@@ -37,6 +46,7 @@ export class PropertyService {
   }
 
   async createBuilding(data: Omit<Building, 'id' | 'createdAt' | 'updatedAt'>, actorId: number, actorRole: string): Promise<Building> {
+    this.requireRole('admin');
     const now = new Date();
     const id = await this.db.buildings.add({
       ...data,
@@ -51,6 +61,7 @@ export class PropertyService {
   }
 
   async updateBuilding(id: number, data: Partial<Building>, actorId: number, actorRole: string): Promise<void> {
+    this.requireRole('admin');
     const before = await this.db.buildings.get(id);
     await this.db.buildings.update(id, { ...data, updatedAt: new Date() });
     const after = await this.db.buildings.get(id);
@@ -69,6 +80,7 @@ export class PropertyService {
   }
 
   async createUnit(data: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'>, actorId: number, actorRole: string): Promise<Unit> {
+    this.requireRole('admin');
     const now = new Date();
     const id = await this.db.units.add({ ...data, createdAt: now, updatedAt: now });
     const unit = await this.db.units.get(id);
@@ -77,6 +89,7 @@ export class PropertyService {
   }
 
   async updateUnit(id: number, data: Partial<Unit>, actorId: number, actorRole: string): Promise<void> {
+    this.requireRole('admin');
     const before = await this.db.units.get(id);
     await this.db.units.update(id, { ...data, updatedAt: new Date() });
     const after = await this.db.units.get(id);
@@ -95,6 +108,7 @@ export class PropertyService {
   }
 
   async createRoom(data: Omit<Room, 'id' | 'createdAt' | 'updatedAt'>, actorId: number, actorRole: string): Promise<Room> {
+    this.requireRole('admin');
     const now = new Date();
     const id = await this.db.rooms.add({ ...data, createdAt: now, updatedAt: now });
     const room = await this.db.rooms.get(id);
@@ -103,6 +117,7 @@ export class PropertyService {
   }
 
   async updateRoom(id: number, data: Partial<Room>, actorId: number, actorRole: string): Promise<void> {
+    this.requireRole('admin');
     const before = await this.db.rooms.get(id);
     await this.db.rooms.update(id, { ...data, updatedAt: new Date() });
     const after = await this.db.rooms.get(id);
@@ -122,6 +137,7 @@ export class PropertyService {
     actorId: number;
     actorRole: string;
   }): Promise<Occupancy> {
+    this.requireRole('admin');
     // Enforce: one active occupancy per resident
     const existing = await this.db.occupancies
       .filter(o => o.residentId === params.residentId && o.status === 'active')
@@ -166,6 +182,7 @@ export class PropertyService {
     actorId: number;
     actorRole: string;
   }): Promise<void> {
+    this.requireRole('admin');
     const active = await this.db.occupancies
       .filter(o => o.residentId === params.residentId && o.status === 'active')
       .first();

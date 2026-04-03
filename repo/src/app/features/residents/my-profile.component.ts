@@ -244,7 +244,7 @@ interface ProfileOccupancy {
       margin: 0;
     }
 
-    // ── Identity card ──────────────────────────────
+    /* ── Identity card ────────────────────────────── */
 
     .identity-card {
       display: flex;
@@ -295,7 +295,7 @@ interface ProfileOccupancy {
       color: rgba(255,255,255,0.6);
     }
 
-    // ── Status chip ────────────────────────────────
+    /* ── Status chip ──────────────────────────────── */
 
     .status-chip {
       display: inline-flex;
@@ -312,7 +312,7 @@ interface ProfileOccupancy {
       &--pending   { background: rgba(254,243,199,0.9); color: #92400e; }
     }
 
-    // ── Cards grid ─────────────────────────────────
+    /* ── Cards grid ───────────────────────────────── */
 
     .cards-grid {
       display: grid;
@@ -322,7 +322,7 @@ interface ProfileOccupancy {
       @media (max-width: 768px) { grid-template-columns: 1fr; }
     }
 
-    // ── Info card ──────────────────────────────────
+    /* ── Info card ────────────────────────────────── */
 
     .info-card {
       background: #fff;
@@ -360,7 +360,7 @@ interface ProfileOccupancy {
       flex-direction: column;
     }
 
-    // ── Field rows ─────────────────────────────────
+    /* ── Field rows ───────────────────────────────── */
 
     .field-row {
       display: flex;
@@ -391,7 +391,7 @@ interface ProfileOccupancy {
       }
     }
 
-    // ── Unassigned state ───────────────────────────
+    /* ── Unassigned state ─────────────────────────── */
 
     .unassigned {
       display: flex;
@@ -404,7 +404,7 @@ interface ProfileOccupancy {
     .unassigned__icon { font-size: 1.125rem; width: 1.125rem; height: 1.125rem; }
     .unassigned__text { font-size: 0.875rem; margin: 0; }
 
-    // ── Consent ────────────────────────────────────
+    /* ── Consent ──────────────────────────────────── */
 
     .consent-badge {
       display: inline-flex;
@@ -426,7 +426,7 @@ interface ProfileOccupancy {
       line-height: 1.5;
     }
 
-    // ── Consent revocation section ─────────────────
+    /* ── Consent revocation section ───────────────── */
 
     .consent-section {
       border-radius: 12px;
@@ -515,7 +515,7 @@ interface ProfileOccupancy {
       &:disabled { opacity: 0.5; cursor: default; }
     }
 
-    // ── Documents section ──────────────────────────
+    /* ── Documents section ────────────────────────── */
 
     .docs-section {
       margin-top: 1.5rem;
@@ -534,7 +534,7 @@ interface ProfileOccupancy {
       margin: 0 0 1rem;
     }
 
-    // ── Skeleton ───────────────────────────────────
+    /* ── Skeleton ─────────────────────────────────── */
 
     @keyframes shimmer {
       0%   { background-position: 200% 0; }
@@ -569,7 +569,7 @@ interface ProfileOccupancy {
       &--sub   { width: 80%; }
     }
 
-    // ── Empty state ────────────────────────────────
+    /* ── Empty state ──────────────────────────────── */
 
     .empty-state {
       display: flex;

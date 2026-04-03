@@ -8,6 +8,8 @@ import { TestBed } from '@angular/core/testing';
 import { PropertyService, ReasonCode } from '../src/app/core/services/property.service';
 import { DbService } from '../src/app/core/services/db.service';
 import { AuditService } from '../src/app/core/services/audit.service';
+import { AuthService } from '../src/app/core/services/auth.service';
+import { LoggerService } from '../src/app/core/services/logger.service';
 
 describe('Property Integration — CRUD', () => {
   let propertyService: PropertyService;
@@ -15,12 +17,13 @@ describe('Property Integration — CRUD', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [PropertyService, DbService, AuditService],
+      providers: [PropertyService, DbService, AuditService, AuthService, LoggerService],
     });
     db = TestBed.inject(DbService);
     propertyService = TestBed.inject(PropertyService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -90,12 +93,13 @@ describe('Property Integration — Occupancy rules', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [PropertyService, DbService, AuditService],
+      providers: [PropertyService, DbService, AuditService, AuthService, LoggerService],
     });
     db = TestBed.inject(DbService);
     propertyService = TestBed.inject(PropertyService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -218,12 +222,13 @@ describe('Property Integration — getRoomOccupants', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      providers: [PropertyService, DbService, AuditService],
+      providers: [PropertyService, DbService, AuditService, AuthService, LoggerService],
     });
     db = TestBed.inject(DbService);
     propertyService = TestBed.inject(PropertyService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {

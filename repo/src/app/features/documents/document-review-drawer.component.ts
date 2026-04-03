@@ -224,7 +224,7 @@ import { DocumentService } from '../../core/services/document.service';
   styles: [`
     :host { display: block; }
 
-    // ── Two-section layout ─────────────────────────
+    /* ── Two-section layout ───────────────────────── */
 
     .review-layout {
       display: flex;
@@ -234,7 +234,7 @@ import { DocumentService } from '../../core/services/document.service';
       overflow: auto;
     }
 
-    // ── Preview panel (60%) ────────────────────────
+    /* ── Preview panel (60%) ──────────────────────── */
 
     .preview-panel {
       flex: 3;
@@ -324,7 +324,7 @@ import { DocumentService } from '../../core/services/document.service';
       font-size: 0.875rem;
     }
 
-    // ── Decision panel (40%) ───────────────────────
+    /* ── Decision panel (40%) ─────────────────────── */
 
     .decision-panel {
       flex: 2;
@@ -333,7 +333,7 @@ import { DocumentService } from '../../core/services/document.service';
       gap: 1rem;
     }
 
-    // ── Resident card ──────────────────────────────
+    /* ── Resident card ────────────────────────────── */
 
     .resident-card {
       display: flex;
@@ -362,7 +362,7 @@ import { DocumentService } from '../../core/services/document.service';
     .resident-card__name  { font-size: 0.9375rem; font-weight: 700; color: #111827; margin: 0 0 0.125rem; }
     .resident-card__email { font-size: 0.75rem; color: #6b7280; margin: 0; }
 
-    // ── Doc metadata ───────────────────────────────
+    /* ── Doc metadata ─────────────────────────────── */
 
     .doc-meta-card {
       border: 1px solid #f3f4f6;
@@ -401,7 +401,7 @@ import { DocumentService } from '../../core/services/document.service';
       &--rejected        { background: #fee2e2; color: #991b1b; }
     }
 
-    // ── Decision ───────────────────────────────────
+    /* ── Decision ─────────────────────────────────── */
 
     .decision-label {
       font-size: 0.6875rem;
@@ -456,7 +456,7 @@ import { DocumentService } from '../../core/services/document.service';
       &:disabled { opacity: 0.5; cursor: default; }
     }
 
-    // ── Reject form ────────────────────────────────
+    /* ── Reject form ──────────────────────────────── */
 
     .reject-form {
       display: flex;
@@ -485,7 +485,7 @@ import { DocumentService } from '../../core/services/document.service';
       &:disabled { opacity: 0.5; cursor: default; }
     }
 
-    // ── Buttons ────────────────────────────────────
+    /* ── Buttons ──────────────────────────────────── */
 
     .btn-ghost {
       padding: 0.375rem 0.875rem;
@@ -519,7 +519,7 @@ import { DocumentService } from '../../core/services/document.service';
       &:hover { background: #f9fafb; }
     }
 
-    // ── Already reviewed ───────────────────────────
+    /* ── Already reviewed ─────────────────────────── */
 
     .already-reviewed {
       padding: 0.75rem;

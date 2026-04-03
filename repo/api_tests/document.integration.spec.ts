@@ -15,6 +15,8 @@ import { DbService } from '../src/app/core/services/db.service';
 import { AuditService } from '../src/app/core/services/audit.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
 import { PropertyService } from '../src/app/core/services/property.service';
+import { AuthService } from '../src/app/core/services/auth.service';
+import { LoggerService } from '../src/app/core/services/logger.service';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -24,12 +26,13 @@ async function setup() {
   TestBed.configureTestingModule({
     providers: [
       DocumentService, ResidentService, DbService,
-      AuditService, CryptoService, PropertyService,
+      AuditService, CryptoService, PropertyService, AuthService, LoggerService,
     ],
   });
   const db = TestBed.inject(DbService);
   await db.open();
   await new Promise(r => setTimeout(r, 200));
+  await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   return {
     docService:      TestBed.inject(DocumentService),
     residentService: TestBed.inject(ResidentService),

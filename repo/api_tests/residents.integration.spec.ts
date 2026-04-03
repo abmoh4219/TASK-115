@@ -14,6 +14,8 @@ import { PropertyService, ReasonCode } from '../src/app/core/services/property.s
 import { DbService } from '../src/app/core/services/db.service';
 import { AuditService } from '../src/app/core/services/audit.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
+import { AuthService } from '../src/app/core/services/auth.service';
+import { LoggerService } from '../src/app/core/services/logger.service';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -21,11 +23,12 @@ import { CryptoService } from '../src/app/core/services/crypto.service';
 
 async function setup() {
   TestBed.configureTestingModule({
-    providers: [ResidentService, PropertyService, DbService, AuditService, CryptoService],
+    providers: [ResidentService, PropertyService, DbService, AuditService, CryptoService, AuthService, LoggerService],
   });
   const db = TestBed.inject(DbService);
   await db.open();
   await new Promise(r => setTimeout(r, 200));
+  await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   return {
     service:  TestBed.inject(ResidentService),
     property: TestBed.inject(PropertyService),

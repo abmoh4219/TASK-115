@@ -480,7 +480,7 @@ export interface OccupancyContext {
   styles: [`
     :host { display: block; }
 
-    // ── Header ─────────────────────────────────────
+    /* ── Header ───────────────────────────────────── */
 
     .drawer-header {
       display: flex;
@@ -522,7 +522,7 @@ export interface OccupancyContext {
       flex-wrap: wrap;
     }
 
-    // ── Status / Room chips ─────────────────────────
+    /* ── Status / Room chips ───────────────────────── */
 
     .status-chip {
       display: inline-flex;
@@ -556,7 +556,7 @@ export interface OccupancyContext {
       color: #9ca3af;
     }
 
-    // ── Tabs ───────────────────────────────────────
+    /* ── Tabs ─────────────────────────────────────── */
 
     .drawer-tabs {
       margin-top: 1rem;
@@ -594,7 +594,7 @@ export interface OccupancyContext {
       padding-top: 3rem;
     }
 
-    // ── Tab actions ────────────────────────────────
+    /* ── Tab actions ──────────────────────────────── */
 
     .tab-actions {
       display: flex;
@@ -607,7 +607,7 @@ export interface OccupancyContext {
       gap: 0.5rem;
     }
 
-    // ── Buttons ────────────────────────────────────
+    /* ── Buttons ──────────────────────────────────── */
 
     .btn-outline {
       display: inline-flex;
@@ -674,7 +674,7 @@ export interface OccupancyContext {
       &:hover { background: #fef2f2; }
     }
 
-    // ── Warning banner ─────────────────────────────
+    /* ── Warning banner ───────────────────────────── */
 
     .warning-banner {
       display: flex;
@@ -690,7 +690,7 @@ export interface OccupancyContext {
 
     .warn-icon { flex-shrink: 0; margin-top: 1px; }
 
-    // ── Field grid (read-only) ──────────────────────
+    /* ── Field grid (read-only) ────────────────────── */
 
     .field-grid {
       display: flex;
@@ -760,7 +760,7 @@ export interface OccupancyContext {
       &:hover { color: #1e3a5f; }
     }
 
-    // ── Notes ──────────────────────────────────────
+    /* ── Notes ────────────────────────────────────── */
 
     .notes-section {
       display: flex;
@@ -850,7 +850,7 @@ export interface OccupancyContext {
       font-style: italic;
     }
 
-    // ── Edit form ──────────────────────────────────
+    /* ── Edit form ────────────────────────────────── */
 
     .edit-form {
       display: flex;
@@ -864,7 +864,7 @@ export interface OccupancyContext {
       gap: 0.75rem;
     }
 
-    // ── Timeline (Change Log) ──────────────────────
+    /* ── Timeline (Change Log) ────────────────────── */
 
     .timeline {
       display: flex;
@@ -969,7 +969,7 @@ export interface OccupancyContext {
       font-style: italic;
     }
 
-    // ── Occupancy tab ──────────────────────────────
+    /* ── Occupancy tab ────────────────────────────── */
 
     .occ-card {
       padding: 1rem;
@@ -1069,7 +1069,7 @@ export interface OccupancyContext {
 
     .occ-history-item__dates { color: #374151; }
 
-    // ── Placeholder state ──────────────────────────
+    /* ── Placeholder state ────────────────────────── */
 
     .placeholder-state {
       display: flex;
@@ -1094,7 +1094,7 @@ export interface OccupancyContext {
       margin: 0;
     }
 
-    // ── Enrollment tab ─────────────────────────────
+    /* ── Enrollment tab ───────────────────────────── */
 
     .enroll-list {
       display: flex;
@@ -1136,7 +1136,7 @@ export interface OccupancyContext {
       color: #6b7280;
     }
 
-    // Vertical timeline
+    /* Vertical timeline */
 
     .enroll-timeline {
       display: flex;
@@ -1207,7 +1207,7 @@ export interface OccupancyContext {
       font-style: italic;
     }
 
-    // ── Skeleton ───────────────────────────────────
+    /* ── Skeleton ─────────────────────────────────── */
 
     .skeleton-wrap {
       display: flex;
@@ -1244,7 +1244,7 @@ export interface OccupancyContext {
       &--sub   { width: 100px; }
     }
 
-    // ── Not found ─────────────────────────────────
+    /* ── Not found ───────────────────────────────── */
 
     .not-found {
       padding: 2rem 1.5rem;

@@ -458,13 +458,13 @@ docker compose run test    # → test results, exit 0 = pass
 ```markdown
 ## How to Run
 ```bash
-docker compose up
+docker compose up --build
 ```
 Open http://localhost:4200 — no configuration needed.
 
 ## How to Run Tests
 ```bash
-docker compose run test
+docker compose run --build test
 ```
 
 ## How to Stop

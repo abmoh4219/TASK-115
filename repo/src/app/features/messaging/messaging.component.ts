@@ -15,6 +15,7 @@ import { DbService, Message, Thread, MessageTemplate, Resident } from '../../cor
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { MaskPipe } from '../../shared/pipes/mask.pipe';
 import { ToastService } from '../../shared/components/toast/toast.service';
+import { LoggerService } from '../../core/services/logger.service';
 
 // =====================================================
 // Types
@@ -28,14 +29,6 @@ interface ThreadView {
   unreadCount:  number;
   lastBody:     string;
 }
-
-// Role → demo userId mapping for the single-instance demo app
-const ROLE_USER_ID: Record<UserRole, number> = {
-  admin:      1,
-  resident:   2,
-  compliance: 3,
-  analyst:    4,
-};
 
 const AVATAR_COLORS = [
   '#1e3a5f', '#0d9488', '#7c3aed', '#db2777',
@@ -1028,6 +1021,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
     private auth:      AuthService,
     private db:        DbService,
     private toast:     ToastService,
+    private logger:    LoggerService,
     private cdr:       ChangeDetectorRef,
     private el:        ElementRef,
     private ngZone:    NgZone,
@@ -1036,8 +1030,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
   // ── Computed ─────────────────────────────────────
 
   get currentUserId(): number {
-    const role = this.auth.getCurrentRole();
-    return role ? (ROLE_USER_ID[role] ?? 1) : 1;
+    return this.auth.getCurrentUserId() ?? 0;
   }
 
   get isAdmin(): boolean {
@@ -1148,7 +1141,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
       const userId   = this.currentUserId;
 
       // DM threads
-      const rawThreads = await this.messaging.getThreads(userId, role);
+      const rawThreads = await this.messaging.getThreads();
       const dmThreads  = rawThreads.filter(t => {
         // A thread is DM-type if it has participants OR has only direct messages
         return t.participantIds.length > 0;
@@ -1180,7 +1173,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
         );
     } catch (e) {
       this.toast.error('Failed to load conversations');
-      console.error(e);
+      this.logger.error('MessagingComponent', 'Operation failed', e);
     } finally {
       this.loadingThreads = false;
       this.cdr.markForCheck();
@@ -1235,14 +1228,10 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      this.messages = await this.messaging.getMessages(
-        thread.id!,
-        this.currentUserId,
-        this.auth.getCurrentRole() ?? undefined,
-      );
+      this.messages = await this.messaging.getMessages(thread.id!);
     } catch (e) {
       this.toast.error('Failed to load messages');
-      console.error(e);
+      this.logger.error('MessagingComponent', 'Operation failed', e);
     } finally {
       this.loadingMessages = false;
       this.cdr.markForCheck();
@@ -1268,8 +1257,6 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
     try {
       const msg = await this.messaging.sendMessage({
         threadId:   this.selectedThread!.id!,
-        senderId:   this.currentUserId,
-        senderRole: this.auth.getCurrentRole() ?? 'admin',
         rawBody:    text,
         type:       'direct',
       });
@@ -1282,7 +1269,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
     } catch (e) {
       this.toast.error('Failed to send message. Please try again.');
       this.composeText = text; // restore
-      console.error(e);
+      this.logger.error('MessagingComponent', 'Operation failed', e);
     } finally {
       this.sending = false;
       this.cdr.markForCheck();
@@ -1292,14 +1279,14 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
   async deleteMessage(msg: Message): Promise<void> {
     if (!this.isAdmin) return;
     try {
-      await this.messaging.deleteMessage(msg.id!, this.currentUserId, 'admin');
+      await this.messaging.deleteMessage(msg.id!);
       this.messages = this.messages.filter(m => m.id !== msg.id);
       this.hoveredId = null;
       this.cdr.markForCheck();
       this.toast.success('Message deleted');
     } catch (e) {
       this.toast.error('Failed to delete message');
-      console.error(e);
+      this.logger.error('MessagingComponent', 'Operation failed', e);
     }
   }
 
@@ -1322,7 +1309,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
       await this.selectThread(thread);
     } catch (e) {
       this.toast.error('Failed to create conversation');
-      console.error(e);
+      this.logger.error('MessagingComponent', 'Operation failed', e);
     } finally {
       this.newThreadLoading = false;
       this.cdr.markForCheck();
@@ -1342,8 +1329,6 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
     this.announcementLoading = true;
     try {
       const { thread } = await this.messaging.createAnnouncement({
-        senderId:   this.currentUserId,
-        senderRole: 'admin',
         subject:    this.announcementSubject.trim(),
         rawBody:    this.announcementBody.trim(),
       });
@@ -1354,7 +1339,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
       this.toast.success('Announcement posted successfully');
     } catch (e) {
       this.toast.error('Failed to post announcement');
-      console.error(e);
+      this.logger.error('MessagingComponent', 'Operation failed', e);
     } finally {
       this.announcementLoading = false;
       this.cdr.markForCheck();
@@ -1415,7 +1400,9 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
   // ── Avatar / name helpers ─────────────────────────
 
   nameById(id: number): string {
-    if (id === ROLE_USER_ID['admin']) return 'Admin';
+    if (id === 1) return 'Admin';
+    if (id === 3) return 'Compliance';
+    if (id === 4) return 'Analyst';
     const r = this.residentMap.get(id);
     return r ? `${r.firstName} ${r.lastName}` : `User ${id}`;
   }
@@ -1436,7 +1423,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
     const others = thread.participantIds.filter(id => id !== this.currentUserId);
     if (others.length === 0) return 'Just you';
     const names = others.slice(0, 2).map(id => {
-      if (id === ROLE_USER_ID['admin']) return 'Admin';
+      if (id === 1) return 'Admin';
       const r = this.residentMap.get(id);
       return r ? `${r.firstName} ${r.lastName}` : `User ${id}`;
     });
@@ -1467,7 +1454,7 @@ export class MessagingComponent implements OnInit, AfterViewChecked, OnDestroy {
 
           if (toMark.length > 0) {
             this.ngZone.run(() => {
-              toMark.forEach(id => this.messaging.markRead(id, this.currentUserId));
+              toMark.forEach(id => this.messaging.markRead(id));
             });
           }
         },

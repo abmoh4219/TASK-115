@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DbService } from './db.service';
+import { LoggerService } from './logger.service';
 
 // =====================================================
 // Audit Actions Enum
@@ -42,7 +43,7 @@ export enum AuditAction {
 @Injectable({ providedIn: 'root' })
 export class AuditService {
 
-  constructor(private db: DbService) {}
+  constructor(private db: DbService, private logger: LoggerService) {}
 
   /**
    * Write an immutable audit entry.
@@ -73,7 +74,7 @@ export class AuditService {
       anomalyFlagged,
     }).catch(err => {
       // Silently log to console — never throw from audit
-      console.error('[AuditService] Failed to write audit entry:', err);
+      this.logger.error('AuditService', 'Failed to write audit entry', err);
     });
   }
 

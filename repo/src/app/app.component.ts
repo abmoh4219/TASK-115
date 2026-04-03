@@ -441,9 +441,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private async loadUnreadCount(): Promise<void> {
     if (!this.currentRole) { this.unreadCount = 0; return; }
-    // Use actor ID 1 as placeholder (real ID resolved in messaging feature)
     try {
-      this.unreadCount = await this.messaging.getUnreadCount(1);
+      this.unreadCount = await this.messaging.getUnreadCount();
     } catch {
       this.unreadCount = 0;
     }

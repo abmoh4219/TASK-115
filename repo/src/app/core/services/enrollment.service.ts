@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { DbService, CourseRound, Enrollment, EnrollmentHistory, Course, CoursePrerequisite } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
+import { AuthService } from './auth.service';
 import { AnomalyService } from './anomaly.service';
 import DOMPurify from 'dompurify';
 
@@ -29,10 +30,18 @@ export interface CreateRoundParams {
 export class EnrollmentService {
 
   constructor(
-    private db:      DbService,
-    private audit:   AuditService,
-    private anomaly: AnomalyService,
+    private db:          DbService,
+    private audit:       AuditService,
+    private authService: AuthService,
+    private anomaly:     AnomalyService,
   ) {}
+
+  private requireRole(...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    if (!current || !allowedRoles.includes(current)) {
+      throw new Error(`Unauthorized: requires role ${allowedRoles.join(' or ')}`);
+    }
+  }
 
   // --------------------------------------------------
   // Course Management
@@ -47,6 +56,7 @@ export class EnrollmentService {
   }
 
   async createCourse(params: CreateCourseParams): Promise<Course> {
+    this.requireRole('admin');
     const now = new Date();
     const id  = await this.db.courses.add({
       title:         DOMPurify.sanitize(params.title),
@@ -68,6 +78,7 @@ export class EnrollmentService {
   }
 
   async createRound(params: CreateRoundParams): Promise<CourseRound> {
+    this.requireRole('admin');
     const id = await this.db.courseRounds.add({
       courseId:         params.courseId,
       startAt:          params.startAt,
@@ -75,7 +86,7 @@ export class EnrollmentService {
       capacity:         params.capacity,
       waitlistCapacity: params.waitlistCapacity,
       addCutoffAt:      params.addCutoffAt,
-      dropCutoffAt:     params.dropCutoffAt,
+      dropCutoffAt:     new Date(params.startAt.getTime() - 2 * 60 * 60 * 1000),
       enrolled:         [],
       waitlisted:       [],
       status:           'open',
@@ -88,6 +99,7 @@ export class EnrollmentService {
   // --------------------------------------------------
 
   async enroll(residentId: number, roundId: number, actorRole: string): Promise<EnrollmentResult> {
+    this.requireRole('resident', 'admin');
     const round = await this.db.courseRounds.get(roundId);
     if (!round) return { success: false, reason: 'ROUND_NOT_FOUND' };
     if (round.status !== 'open') return { success: false, reason: 'ROUND_NOT_OPEN' };
@@ -171,6 +183,7 @@ export class EnrollmentService {
   // --------------------------------------------------
 
   async drop(enrollmentId: number, actorId: number, actorRole: string, reasonCode: string): Promise<{ success: boolean; reason?: string }> {
+    this.requireRole('resident', 'admin');
     const enrollment = await this.db.enrollments.get(enrollmentId);
     if (!enrollment) return { success: false, reason: 'NOT_FOUND' };
     if (enrollment.status === 'dropped') return { success: false, reason: 'ALREADY_DROPPED' };
@@ -179,7 +192,10 @@ export class EnrollmentService {
     if (!round) return { success: false, reason: 'ROUND_NOT_FOUND' };
 
     const now = new Date();
-    if (now > round.dropCutoffAt) return { success: false, reason: 'DROP_CUTOFF_PASSED' };
+    const twoHoursBeforeStart = new Date(round.startAt.getTime() - 2 * 60 * 60 * 1000);
+    if (now >= twoHoursBeforeStart) {
+      return { success: false, reason: 'DROP_CUTOFF_PASSED' };
+    }
 
     const historyEntry: EnrollmentHistory = {
       status:    'dropped',

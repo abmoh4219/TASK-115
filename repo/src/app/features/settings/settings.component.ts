@@ -15,7 +15,8 @@ import { SearchService } from '../../core/services/search.service';
 import { MessagingService } from '../../core/services/messaging.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService, ThemeMode, UiDensity } from '../../core/services/theme.service';
-import { DbService, ContentPolicy, MessageTemplate, SearchDictionaryEntry, ZeroResultsLog } from '../../core/services/db.service';
+import { ContentPolicy, MessageTemplate, SearchDictionaryEntry, ZeroResultsLog } from '../../core/services/db.service';
+import { ContentPolicyService } from '../../core/services/content-policy.service';
 import { ToastService } from '../../shared/components/toast/toast.service';
 
 type SettingsSection = 'data' | 'dictionary' | 'safety' | 'templates' | 'preferences' | 'security';
@@ -625,14 +626,14 @@ export class SettingsComponent implements OnInit {
   changingPassword = false;
 
   constructor(
-    private importExport: ImportExportService,
-    private searchService: SearchService,
-    private messaging:    MessagingService,
-    private auth:         AuthService,
-    private theme:        ThemeService,
-    private db:           DbService,
-    private toast:        ToastService,
-    private cdr:          ChangeDetectorRef,
+    private importExport:    ImportExportService,
+    private searchService:   SearchService,
+    private messaging:       MessagingService,
+    private auth:            AuthService,
+    private theme:           ThemeService,
+    private policyService:   ContentPolicyService,
+    private toast:           ToastService,
+    private cdr:             ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -734,18 +735,18 @@ export class SettingsComponent implements OnInit {
   // --------------------------------------------------
 
   private async loadPolicies(): Promise<void> {
-    this.policies = await this.db.contentPolicies.toArray();
+    this.policies = await this.policyService.getPolicies();
     this.cdr.markForCheck();
   }
 
   async togglePolicy(p: ContentPolicy): Promise<void> {
-    await this.db.contentPolicies.update(p.id!, { enabled: !p.enabled });
+    await this.policyService.togglePolicy(p.id!, !p.enabled);
     this.loadPolicies();
   }
 
   async addPolicy(): Promise<void> {
     if (!this.newPolicyPattern.trim()) return;
-    await this.db.contentPolicies.add({
+    await this.policyService.addPolicy({
       pattern:  this.newPolicyPattern.trim(),
       type:     this.newPolicyType,
       action:   this.newPolicyAction,
@@ -785,7 +786,7 @@ export class SettingsComponent implements OnInit {
 
   async deleteTemplate(t: MessageTemplate): Promise<void> {
     if (t.id == null) return;
-    await this.db.messageTemplates.delete(t.id);
+    await this.messaging.deleteTemplate(t.id);
     this.toast.success('Template deleted');
     this.loadTemplates();
   }

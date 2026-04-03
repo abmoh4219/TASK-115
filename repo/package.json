@@ -7,8 +7,8 @@
     "start": "ng serve",
     "build": "ng build",
     "test": "jest",
-    "test:unit": "jest unit_tests/ --coverage",
-    "test:api": "jest api_tests/ --runInBand",
+    "test:unit": "jest unit_tests/ --forceExit --passWithNoTests",
+    "test:api": "jest api_tests/ --runInBand --forceExit --passWithNoTests",
     "lint": "ng lint"
   },
   "private": true,

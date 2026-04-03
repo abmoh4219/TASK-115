@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { DbService, Document as HpDocument, ConsentRecord } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
+import { AuthService } from './auth.service';
 import { CryptoService } from './crypto.service';
+import { ContentPolicyService } from './content-policy.service';
 import DOMPurify from 'dompurify';
 
 // =====================================================
@@ -31,27 +33,38 @@ export class DocumentService {
   readonly ALLOWED_MIME_TYPES       = ['application/pdf', 'image/jpeg', 'image/png'] as const;
   readonly POLICY_VERSION           = '1.0';
 
-  /** Cached AES-GCM key — derived once per service lifecycle */
-  private internalKey: CryptoKey | null = null;
-  private readonly INTERNAL_KEY_PASS = 'hp-document-key-v1';
-  private readonly INTERNAL_KEY_SALT = 'hp-document-salt-v1';
-
   constructor(
-    private db:     DbService,
-    private audit:  AuditService,
-    private crypto: CryptoService,
+    private db:            DbService,
+    private audit:         AuditService,
+    private authService:   AuthService,
+    private crypto:        CryptoService,
+    private contentPolicy: ContentPolicyService,
   ) {}
 
+  private requireRole(...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    if (!current || !allowedRoles.includes(current)) {
+      throw new Error(`Unauthorized: requires role ${allowedRoles.join(' or ')}`);
+    }
+  }
+
+  private requireSelfOrRole(resourceOwnerId: number, ...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!current) throw new Error('Unauthorized: not authenticated');
+    if (allowedRoles.includes(current)) return;
+    if (current === 'resident' && currentUserId === resourceOwnerId) return;
+    throw new Error('Unauthorized: insufficient permissions');
+  }
+
   // --------------------------------------------------
-  // Internal key (derived once, then cached)
+  // Session key (derived from user password on login)
   // --------------------------------------------------
 
-  private async getKey(): Promise<CryptoKey> {
-    if (!this.internalKey) {
-      const salt = new TextEncoder().encode(this.INTERNAL_KEY_SALT);
-      this.internalKey = await this.crypto.deriveKey(this.INTERNAL_KEY_PASS, salt);
-    }
-    return this.internalKey;
+  private getKey(): CryptoKey {
+    const key = this.crypto.getSessionKey();
+    if (!key) throw new Error('No active session key — please log in');
+    return key;
   }
 
   // --------------------------------------------------
@@ -59,6 +72,7 @@ export class DocumentService {
   // --------------------------------------------------
 
   async getDocuments(residentId: number): Promise<HpDocument[]> {
+    this.requireSelfOrRole(residentId, 'admin', 'compliance');
     const docs = await this.db.documents
       .where('residentId').equals(residentId)
       .toArray();
@@ -70,6 +84,7 @@ export class DocumentService {
   // --------------------------------------------------
 
   async getPendingReview(): Promise<HpDocument[]> {
+    this.requireRole('compliance', 'admin');
     return this.db.documents
       .filter(d => d.status === 'pending_review' && !d.hidden)
       .toArray();
@@ -90,6 +105,24 @@ export class DocumentService {
     actorRole:       string,
   ): Promise<HpDocument> {
 
+    this.requireRole('resident', 'admin');
+
+    // ── Consent validation ─────────────────────────
+    const consentStatus = await this.getConsentStatus(residentId);
+    if (!consentStatus.granted) {
+      throw new Error('Upload rejected: resident has not granted document consent');
+    }
+    const consentRecord = await this.db.consentRecords.get(consentRecordId);
+    if (!consentRecord || consentRecord.residentId !== residentId || consentRecord.action !== 'granted') {
+      throw new Error('Upload rejected: invalid or mismatched consent record');
+    }
+
+    // ── Content policy check on file name ────────────
+    const policyResult = await this.contentPolicy.evaluate(file.name);
+    if (policyResult.action === 'block') {
+      throw new Error('Document upload blocked by content safety policy');
+    }
+
     // ── Validation ──────────────────────────────────
     if (!this.ALLOWED_MIME_TYPES.includes(file.type as never)) {
       throw new Error('INVALID_FILE_TYPE');
@@ -105,7 +138,7 @@ export class DocumentService {
     }
 
     const buffer = await file.arrayBuffer();
-    const key    = await this.getKey();
+    const key    = this.getKey();
 
     // ── SHA-256 hash — encrypted at rest ────────────
     const rawHash = await this.crypto.hashFile(buffer);
@@ -161,6 +194,7 @@ export class DocumentService {
     actorId:     number,
     actorRole:   string,
   ): Promise<HpDocument> {
+    this.requireRole('compliance', 'admin');
     const before = await this.db.documents.get(id);
     if (!before) throw new Error('DOCUMENT_NOT_FOUND');
 
@@ -194,6 +228,7 @@ export class DocumentService {
     actorId:    number,
     actorRole:  string,
   ): Promise<number> {
+    this.requireRole('resident', 'admin');
     const consentId = await this.db.consentRecords.add({
       residentId,
       action:        'granted',
@@ -217,6 +252,7 @@ export class DocumentService {
     actorId:    number,
     actorRole:  string,
   ): Promise<void> {
+    this.requireRole('resident', 'admin');
     const docs = await this.db.documents
       .where('residentId').equals(residentId)
       .toArray();
@@ -275,7 +311,7 @@ export class DocumentService {
     }
     const ciphertext = doc.fileData.slice(0, dotIdx);
     const iv         = doc.fileData.slice(dotIdx + 1);
-    const key = await this.getKey();
+    const key = this.getKey();
     return this.crypto.decryptRaw(ciphertext, iv, key);
   }
 

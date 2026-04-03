@@ -14,6 +14,7 @@ import { AuditService } from '../src/app/core/services/audit.service';
 import { AnomalyService } from '../src/app/core/services/anomaly.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { SearchService } from '../src/app/core/services/search.service';
+import { LoggerService } from '../src/app/core/services/logger.service';
 
 // Helper: create a fake .hpd File from a JSON payload
 async function createHpdFile(
@@ -37,7 +38,7 @@ describe('Import/Export Integration — round trip', () => {
       imports: [RouterTestingModule],
       providers: [
         ImportExportService, DbService, CryptoService,
-        AuditService, AnomalyService, AuthService, SearchService,
+        AuditService, AnomalyService, AuthService, SearchService, LoggerService,
       ],
     });
     db = TestBed.inject(DbService);
@@ -50,6 +51,7 @@ describe('Import/Export Integration — round trip', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -115,7 +117,7 @@ describe('Import/Export Integration — duplicate modes', () => {
       imports: [RouterTestingModule],
       providers: [
         ImportExportService, DbService, CryptoService,
-        AuditService, AnomalyService, AuthService, SearchService,
+        AuditService, AnomalyService, AuthService, SearchService, LoggerService,
       ],
     });
     db = TestBed.inject(DbService);
@@ -128,6 +130,7 @@ describe('Import/Export Integration — duplicate modes', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -190,7 +193,7 @@ describe('Import/Export Integration — prototype pollution guard', () => {
       imports: [RouterTestingModule],
       providers: [
         ImportExportService, DbService, CryptoService,
-        AuditService, AnomalyService, AuthService, SearchService,
+        AuditService, AnomalyService, AuthService, SearchService, LoggerService,
       ],
     });
     db = TestBed.inject(DbService);
@@ -202,6 +205,7 @@ describe('Import/Export Integration — prototype pollution guard', () => {
     await db.rooms.clear();
     await db.residents.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -238,7 +242,7 @@ describe('Import/Export Integration — audit trail', () => {
       imports: [RouterTestingModule],
       providers: [
         ImportExportService, DbService, CryptoService,
-        AuditService, AnomalyService, AuthService, SearchService,
+        AuditService, AnomalyService, AuthService, SearchService, LoggerService,
       ],
     });
     db = TestBed.inject(DbService);
@@ -251,6 +255,7 @@ describe('Import/Export Integration — audit trail', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {

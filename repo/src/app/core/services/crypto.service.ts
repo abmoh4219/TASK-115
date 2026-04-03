@@ -20,6 +20,20 @@ export class CryptoService {
   private readonly IV_BYTES = 12;
 
   // --------------------------------------------------
+  // Session Key — in-memory only, set on login, cleared on lock
+  // --------------------------------------------------
+
+  private _sessionKey: CryptoKey | null = null;
+
+  getSessionKey(): CryptoKey | null {
+    return this._sessionKey;
+  }
+
+  setSessionKey(key: CryptoKey | null): void {
+    this._sessionKey = key;
+  }
+
+  // --------------------------------------------------
   // Key Derivation — PBKDF2 SHA-256
   // --------------------------------------------------
 

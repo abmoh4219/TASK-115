@@ -70,7 +70,7 @@ const TOAST_ICONS: Record<string, string> = {
       box-shadow: 0 4px 16px rgba(0,0,0,0.12);
       pointer-events: all;
 
-      // Slide-in from right
+      /* Slide-in from right */
       animation: toast-in 220ms ease forwards;
 
       &--success { border-color: #10b981; .toast__icon { color: #10b981; } }

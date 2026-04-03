@@ -16,6 +16,7 @@ import { AuditService } from '../../src/app/core/services/audit.service';
 import { AuditAction } from '../../src/app/core/services/audit.service';
 import { AuthService } from '../../src/app/core/services/auth.service';
 import { CryptoService } from '../../src/app/core/services/crypto.service';
+import { LoggerService } from '../../src/app/core/services/logger.service';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -24,11 +25,12 @@ import { CryptoService } from '../../src/app/core/services/crypto.service';
 async function setup() {
   TestBed.configureTestingModule({
     imports: [RouterTestingModule],
-    providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+    providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
   });
   const db = TestBed.inject(DbService);
   await db.open();
   await new Promise(r => setTimeout(r, 150));
+  await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   return {
     service: TestBed.inject(MessagingService),
     audit:   TestBed.inject(AuditService),
@@ -68,27 +70,28 @@ describe('MessagingService — getThreads role filtering', () => {
 
   it('admin role returns all threads regardless of participation', async () => {
     const { service, db } = await setup();
+    // admin userId=1 — create threads where admin is NOT a participant
+    await service.createThread([5, 6], 'Thread A');
+    await service.createThread([7, 8], 'Thread B');
 
-    // Thread where userId=10 is NOT a participant
-    await service.createThread([1, 2], 'Thread A');
-    // Thread where userId=10 IS a participant
-    await service.createThread([10, 3], 'Thread B');
-
-    const threads = await service.getThreads(10, 'admin');
-    expect(threads.length).toBe(2);
+    const threads = await service.getThreads();
+    expect(threads.length).toBe(2); // admin sees all
 
     await teardown(db);
   });
 
   it('non-admin returns only threads where user is a participant', async () => {
     const { service, db } = await setup();
+    const auth = TestBed.inject(AuthService);
 
-    // userId=5 is participant only in Thread A
-    await service.createThread([5, 2], 'Thread A');
-    // userId=5 is NOT in Thread B
-    await service.createThread([1, 3], 'Thread B');
+    // Create threads as admin first
+    await service.createThread([2, 3], 'Thread A');  // resident (userId=2) is in A
+    await service.createThread([1, 5], 'Thread B');  // resident (userId=2) NOT in B
 
-    const threads = await service.getThreads(5, 'resident');
+    // Switch to resident role (userId=2)
+    await auth.selectRole('resident', 'harborpoint2024');
+
+    const threads = await service.getThreads();
     expect(threads.length).toBe(1);
     expect(threads[0].subject).toBe('Thread A');
 
@@ -105,23 +108,21 @@ describe('MessagingService — getMessages admin access audit', () => {
   it('writes MESSAGE_ADMIN_ACCESS audit entry when admin is not a thread participant', async () => {
     const { service, db } = await setup();
 
-    // Thread does not include adminId=99
-    const thread = await service.createThread([1, 2], 'Private Thread');
+    // Thread does NOT include admin userId=1
+    const thread = await service.createThread([5, 6], 'Private Thread');
     await service.sendMessage({
       threadId: thread.id!,
-      senderId: 1,
-      senderRole: 'resident',
       rawBody: 'hello',
       type: 'direct',
     });
 
-    // Admin (id=99) accesses thread — not a participant
-    await service.getMessages(thread.id!, 99, 'admin');
+    // Admin (userId=1) accesses thread they're not a participant in
+    await service.getMessages(thread.id!);
 
-    // Audit log should contain a MESSAGE_ADMIN_ACCESS entry for actor 99
+    // Audit log should contain MESSAGE_ADMIN_ACCESS for actorId=1
     const logs = await db.auditLogs.toArray();
     const entry = logs.find(
-      l => l.action === AuditAction.MESSAGE_ADMIN_ACCESS && l.actorId === 99,
+      l => l.action === AuditAction.MESSAGE_ADMIN_ACCESS && l.actorId === 1,
     );
     expect(entry).toBeDefined();
     expect(entry!.targetType).toBe('thread');
@@ -143,8 +144,6 @@ describe('MessagingService — sendMessage masking', () => {
     const thread = await service.createThread([1, 2], 'Mask Test');
     const msg = await service.sendMessage({
       threadId: thread.id!,
-      senderId: 1,
-      senderRole: 'admin',
       rawBody: 'Contact info: admin@harborpoint.local or call 555-123-4567',
       type: 'direct',
     });

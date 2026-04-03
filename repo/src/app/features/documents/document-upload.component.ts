@@ -217,7 +217,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       gap: 1rem;
     }
 
-    // ── Upload zone ────────────────────────────────
+    /* ── Upload zone ──────────────────────────────── */
 
     .upload-zone {
       height: 200px;
@@ -284,7 +284,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       color: #92400e;
     }
 
-    // ── File preview card ──────────────────────────
+    /* ── File preview card ────────────────────────── */
 
     .file-preview-card {
       display: flex;
@@ -345,7 +345,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       &:disabled { opacity: 0.4; cursor: default; }
     }
 
-    // ── Progress bar ───────────────────────────────
+    /* ── Progress bar ─────────────────────────────── */
 
     .progress-wrap {
       display: flex;
@@ -374,7 +374,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       white-space: nowrap;
     }
 
-    // ── Upload actions ─────────────────────────────
+    /* ── Upload actions ───────────────────────────── */
 
     .upload-actions {
       display: flex;
@@ -382,7 +382,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       gap: 0.5rem;
     }
 
-    // ── Document list ──────────────────────────────
+    /* ── Document list ────────────────────────────── */
 
     .doc-list {
       display: flex;
@@ -474,7 +474,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       margin: 0.25rem 0 0;
     }
 
-    // ── Rejected notes ─────────────────────────────
+    /* ── Rejected notes ───────────────────────────── */
 
     .doc-card__reject-notes {
       margin-top: 0.5rem;
@@ -499,7 +499,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       line-height: 1.5;
     }
 
-    // ── Empty state ────────────────────────────────
+    /* ── Empty state ──────────────────────────────── */
 
     .doc-empty {
       text-align: center;
@@ -508,7 +508,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       color: #9ca3af;
     }
 
-    // ── Buttons ────────────────────────────────────
+    /* ── Buttons ──────────────────────────────────── */
 
     .btn-ghost {
       padding: 0.375rem 0.875rem;
@@ -541,7 +541,7 @@ import { ConsentModalComponent } from './consent-modal.component';
       &:disabled { opacity: 0.5; cursor: default; }
     }
 
-    // ── Skeleton ───────────────────────────────────
+    /* ── Skeleton ─────────────────────────────────── */
 
     @keyframes shimmer {
       0%   { background-position: 200% 0; }

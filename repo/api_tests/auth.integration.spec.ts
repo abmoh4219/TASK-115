@@ -83,3 +83,145 @@ describe('Auth Integration — role guard enforcement', () => {
     expect(authService.hasAnyRole('admin', 'resident', 'compliance', 'analyst')).toBe(true);
   });
 });
+
+describe('Auth Integration — route guard behavior', () => {
+  let authService: AuthService;
+
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [AuthService, CryptoService],
+    });
+    authService = TestBed.inject(AuthService);
+  });
+
+  afterEach(() => {
+    authService.ngOnDestroy();
+    TestBed.resetTestingModule();
+    localStorage.clear();
+  });
+
+  it('AdminGuard: admin role → canActivate true; resident role → false', async () => {
+    await authService.selectRole('admin', 'harborpoint2024');
+    expect(authService.hasRole('admin')).toBe(true);
+
+    authService.lockSession();
+    await authService.selectRole('resident', 'harborpoint2024');
+    expect(authService.hasRole('admin')).toBe(false);
+  });
+
+  it('ResidentGuard: resident role → true; admin role → false', async () => {
+    await authService.selectRole('resident', 'harborpoint2024');
+    expect(authService.hasRole('resident')).toBe(true);
+    expect(authService.hasRole('admin')).toBe(false);
+  });
+
+  it('ComplianceGuard: compliance → true; analyst → false', async () => {
+    await authService.selectRole('compliance', 'harborpoint2024');
+    expect(authService.hasRole('compliance')).toBe(true);
+    expect(authService.hasRole('analyst')).toBe(false);
+  });
+
+  it('AnalystGuard: analyst → true; compliance → false', async () => {
+    await authService.selectRole('analyst', 'harborpoint2024');
+    expect(authService.hasRole('analyst')).toBe(true);
+    expect(authService.hasRole('compliance')).toBe(false);
+  });
+
+  it('lockSession clears all role access', async () => {
+    await authService.selectRole('admin', 'harborpoint2024');
+    expect(authService.hasRole('admin')).toBe(true);
+
+    authService.lockSession();
+    expect(authService.hasRole('admin')).toBe(false);
+    expect(authService.hasRole('resident')).toBe(false);
+    expect(authService.hasRole('compliance')).toBe(false);
+    expect(authService.hasRole('analyst')).toBe(false);
+    expect(authService.hasAnyRole('admin', 'resident', 'compliance', 'analyst')).toBe(false);
+  });
+});
+
+describe('Auth Integration — anomaly detection', () => {
+  let anomalyService: import('../src/app/core/services/anomaly.service').AnomalyService;
+
+  beforeEach(() => {
+    localStorage.clear();
+    const { AnomalyService } = require('../src/app/core/services/anomaly.service');
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [AuthService, CryptoService, AnomalyService,
+        { provide: 'AuditService', useValue: { log: () => {} } },
+      ],
+    });
+    anomalyService = TestBed.inject(AnomalyService);
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    localStorage.clear();
+  });
+
+  it('emits anomalyDetected$ after >30 searches in 60s', () => {
+    const events: unknown[] = [];
+    anomalyService.anomalyDetected$.subscribe(e => events.push(e));
+
+    // First 30 searches should not trigger
+    for (let i = 0; i < 30; i++) {
+      anomalyService.recordSearch();
+    }
+    expect(events.length).toBe(0);
+
+    // 31st search triggers anomaly
+    anomalyService.recordSearch();
+    expect(events.length).toBe(1);
+  });
+});
+
+describe('Auth Integration — userId in session', () => {
+  let authService: AuthService;
+  let cryptoService: CryptoService;
+
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      imports: [RouterTestingModule],
+      providers: [AuthService, CryptoService],
+    });
+    authService = TestBed.inject(AuthService);
+    cryptoService = TestBed.inject(CryptoService);
+  });
+
+  afterEach(() => {
+    authService.ngOnDestroy();
+    TestBed.resetTestingModule();
+    localStorage.clear();
+  });
+
+  it('login sets correct userId per role', async () => {
+    await authService.login('admin', 'harborpoint2024');
+    expect(authService.getCurrentUserId()).toBe(1);
+
+    authService.lockSession();
+    await authService.login('resident', 'harborpoint2024');
+    expect(authService.getCurrentUserId()).toBe(2);
+
+    authService.lockSession();
+    await authService.login('compliance', 'harborpoint2024');
+    expect(authService.getCurrentUserId()).toBe(3);
+
+    authService.lockSession();
+    await authService.login('analyst', 'harborpoint2024');
+    expect(authService.getCurrentUserId()).toBe(4);
+  });
+
+  it('lockSession clears userId and crypto key', async () => {
+    await authService.login('admin', 'harborpoint2024');
+    expect(authService.getCurrentUserId()).toBe(1);
+    expect(cryptoService.getSessionKey()).not.toBeNull();
+
+    authService.lockSession();
+    expect(authService.getCurrentUserId()).toBeNull();
+    expect(cryptoService.getSessionKey()).toBeNull();
+  });
+});

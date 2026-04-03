@@ -1,6 +1,6 @@
-// =======================================================
-// Property Overview Page
-// =======================================================
+/* ======================================================= */
+/* Property Overview Page */
+/* ======================================================= */
 
 .property-page {
   padding: 1.75rem 2rem;
@@ -8,7 +8,7 @@
   margin: 0 auto;
 }
 
-// ── Stats Row ───────────────────────────────────────────
+/* ── Stats Row ─────────────────────────────────────────── */
 
 .stats-row {
   display: grid;
@@ -20,7 +20,7 @@
   @media (max-width: 600px)  { grid-template-columns: 1fr; }
 }
 
-// ── Section Header ──────────────────────────────────────
+/* ── Section Header ────────────────────────────────────── */
 
 .section-header {
   display: flex;
@@ -76,7 +76,7 @@
   }
 }
 
-// ── Buildings Grid ──────────────────────────────────────
+/* ── Buildings Grid ────────────────────────────────────── */
 
 .buildings-grid {
   display: grid;
@@ -87,7 +87,7 @@
   @media (max-width: 768px)  { grid-template-columns: 1fr; }
 }
 
-// ── Building Card ───────────────────────────────────────
+/* ── Building Card ─────────────────────────────────────── */
 
 .building-card {
   background: #ffffff;
@@ -107,7 +107,7 @@
 
   &:focus-visible { outline: 2px solid #2dd4bf; outline-offset: 2px; }
 
-  // -- Header --
+  /* -- Header -- */
   &__header {
     display: flex;
     align-items: flex-start;
@@ -150,14 +150,14 @@
     overflow: hidden;
   }
 
-  // -- Divider --
+  /* -- Divider -- */
   &__divider {
     border: none;
     border-top: 1px solid #f3f4f6;
     margin: 0 1.25rem;
   }
 
-  // -- Stats row --
+  /* -- Stats row -- */
   &__stats {
     display: flex;
     align-items: center;
@@ -195,7 +195,7 @@
     flex-shrink: 0;
   }
 
-  // -- Occupancy bar --
+  /* -- Occupancy bar -- */
   &__occupancy {
     padding: 0 1.25rem 1.25rem;
   }
@@ -236,7 +236,7 @@
   &--high   { background: linear-gradient(90deg, #ef4444, #f87171); }
 }
 
-// ── Skeleton States ─────────────────────────────────────
+/* ── Skeleton States ───────────────────────────────────── */
 
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
@@ -303,7 +303,7 @@
   &--sub   { height: 12px; width: 85%; }
 }
 
-// ── Modal Form ──────────────────────────────────────────
+/* ── Modal Form ────────────────────────────────────────── */
 
 .modal-form {
   display: flex;

@@ -11,6 +11,7 @@ import { DbService } from '../src/app/core/services/db.service';
 import { AuditService } from '../src/app/core/services/audit.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
+import { LoggerService } from '../src/app/core/services/logger.service';
 
 describe('Messaging Integration — thread & message flow', () => {
   let service: MessagingService;
@@ -19,12 +20,13 @@ describe('Messaging Integration — thread & message flow', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -43,8 +45,6 @@ describe('Messaging Integration — thread & message flow', () => {
     const thread = await service.createThread([1, 2], 'Chat');
     const msg = await service.sendMessage({
       threadId: thread.id!,
-      senderId: 1,
-      senderRole: 'admin',
       rawBody: 'Hello there!',
       type: 'direct',
     });
@@ -55,8 +55,8 @@ describe('Messaging Integration — thread & message flow', () => {
 
   it('retrieves messages for a thread', async () => {
     const thread = await service.createThread([1, 2], 'Thread');
-    await service.sendMessage({ threadId: thread.id!, senderId: 1, senderRole: 'admin', rawBody: 'Msg 1', type: 'direct' });
-    await service.sendMessage({ threadId: thread.id!, senderId: 2, senderRole: 'resident', rawBody: 'Msg 2', type: 'direct' });
+    await service.sendMessage({ threadId: thread.id!, rawBody: 'Msg 1', type: 'direct' });
+    await service.sendMessage({ threadId: thread.id!, rawBody: 'Msg 2', type: 'direct' });
 
     const messages = await service.getMessages(thread.id!);
     expect(messages.length).toBe(2);
@@ -64,27 +64,27 @@ describe('Messaging Integration — thread & message flow', () => {
 
   it('marks a message as read', async () => {
     const thread = await service.createThread([1, 2], 'Thread');
-    const msg = await service.sendMessage({ threadId: thread.id!, senderId: 1, senderRole: 'admin', rawBody: 'Hi', type: 'direct' });
-    await service.markRead(msg.id!, 2);
+    const msg = await service.sendMessage({ threadId: thread.id!, rawBody: 'Hi', type: 'direct' });
+    await service.markRead(msg.id!);
 
     const updated = await db.messages.get(msg.id!);
-    expect(updated?.readBy.some(r => r.userId === 2)).toBe(true);
+    expect(updated?.readBy.some(r => r.userId === 1)).toBe(true);
   });
 
   it('does not duplicate read receipts', async () => {
     const thread = await service.createThread([1, 2], 'Thread');
-    const msg = await service.sendMessage({ threadId: thread.id!, senderId: 1, senderRole: 'admin', rawBody: 'Hi', type: 'direct' });
-    await service.markRead(msg.id!, 2);
-    await service.markRead(msg.id!, 2); // called twice
+    const msg = await service.sendMessage({ threadId: thread.id!, rawBody: 'Hi', type: 'direct' });
+    await service.markRead(msg.id!);
+    await service.markRead(msg.id!); // called twice
 
     const updated = await db.messages.get(msg.id!);
-    expect(updated?.readBy.filter(r => r.userId === 2).length).toBe(1);
+    expect(updated?.readBy.filter(r => r.userId === 1).length).toBe(1);
   });
 
   it('soft-deletes a message (deleted=true)', async () => {
     const thread = await service.createThread([1, 2], 'Thread');
-    const msg = await service.sendMessage({ threadId: thread.id!, senderId: 1, senderRole: 'admin', rawBody: 'Delete me', type: 'direct' });
-    await service.deleteMessage(msg.id!, 1, 'admin');
+    const msg = await service.sendMessage({ threadId: thread.id!, rawBody: 'Delete me', type: 'direct' });
+    await service.deleteMessage(msg.id!);
 
     const deleted = await db.messages.get(msg.id!);
     expect(deleted?.deleted).toBe(true);
@@ -93,9 +93,9 @@ describe('Messaging Integration — thread & message flow', () => {
 
   it('deleted messages excluded from getMessages', async () => {
     const thread = await service.createThread([1, 2], 'Thread');
-    const msg = await service.sendMessage({ threadId: thread.id!, senderId: 1, senderRole: 'admin', rawBody: 'Visible', type: 'direct' });
-    const msg2 = await service.sendMessage({ threadId: thread.id!, senderId: 1, senderRole: 'admin', rawBody: 'Hidden', type: 'direct' });
-    await service.deleteMessage(msg2.id!, 1, 'admin');
+    const msg = await service.sendMessage({ threadId: thread.id!, rawBody: 'Visible', type: 'direct' });
+    const msg2 = await service.sendMessage({ threadId: thread.id!, rawBody: 'Hidden', type: 'direct' });
+    await service.deleteMessage(msg2.id!);
 
     const messages = await service.getMessages(thread.id!);
     expect(messages.length).toBe(1);
@@ -110,12 +110,13 @@ describe('Messaging Integration — admin thread visibility', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
     await db.threads.clear();
     await db.messages.clear();
     await db.auditLogs.clear();
@@ -131,28 +132,30 @@ describe('Messaging Integration — admin thread visibility', () => {
     await service.createThread([1, 2], 'Admin thread');
 
     // Admin userId=1 sees both threads (including one they are not in)
-    const adminThreads = await service.getThreads(1, 'admin');
+    const adminThreads = await service.getThreads();
     expect(adminThreads.length).toBe(2);
   });
 
   it('resident getThreads returns only their own threads', async () => {
-    await service.createThread([5, 6], 'Resident thread');
+    await service.createThread([2, 6], 'Resident thread');
     await service.createThread([7, 8], 'Other thread');
 
-    const residentThreads = await service.getThreads(5, 'resident');
+    // Switch to resident role (userId=2) to test resident visibility
+    await TestBed.inject(AuthService).selectRole('resident', 'harborpoint2024');
+    const residentThreads = await service.getThreads();
     expect(residentThreads.length).toBe(1);
-    expect(residentThreads[0].participantIds).toContain(5);
+    expect(residentThreads[0].participantIds).toContain(2);
   });
 
   it('getMessages writes MESSAGE_ADMIN_ACCESS when admin is not a participant', async () => {
     const thread = await service.createThread([10, 11], 'Private');
-    await service.sendMessage({ threadId: thread.id!, senderId: 10, senderRole: 'resident', rawBody: 'private note', type: 'direct' });
+    await service.sendMessage({ threadId: thread.id!, rawBody: 'private note', type: 'direct' });
 
-    // Admin id=99 — not a participant
-    await service.getMessages(thread.id!, 99, 'admin');
+    // Admin id=1 (from session) — not a participant of thread [10, 11]
+    await service.getMessages(thread.id!);
 
     const logs = await db.auditLogs.toArray();
-    const entry = logs.find(l => l.action === 'MESSAGE_ADMIN_ACCESS' && l.actorId === 99);
+    const entry = logs.find(l => l.action === 'MESSAGE_ADMIN_ACCESS' && l.actorId === 1);
     expect(entry).toBeDefined();
     expect(entry!.targetId).toBe(thread.id);
   });
@@ -160,9 +163,9 @@ describe('Messaging Integration — admin thread visibility', () => {
   it('getMessages does NOT write MESSAGE_ADMIN_ACCESS when admin IS a participant', async () => {
     const adminId = 1;
     const thread = await service.createThread([adminId, 2], 'Admin Chat');
-    await service.sendMessage({ threadId: thread.id!, senderId: 2, senderRole: 'resident', rawBody: 'hello', type: 'direct' });
+    await service.sendMessage({ threadId: thread.id!, rawBody: 'hello', type: 'direct' });
 
-    await service.getMessages(thread.id!, adminId, 'admin');
+    await service.getMessages(thread.id!);
 
     const logs = await db.auditLogs.toArray();
     const entry = logs.find(l => l.action === 'MESSAGE_ADMIN_ACCESS' && l.actorId === adminId);
@@ -177,12 +180,13 @@ describe('Messaging Integration — createAnnouncement', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
     await db.threads.clear();
     await db.messages.clear();
   });
@@ -194,8 +198,6 @@ describe('Messaging Integration — createAnnouncement', () => {
 
   it('createAnnouncement creates a thread and announcement-type message', async () => {
     const { thread, message } = await service.createAnnouncement({
-      senderId: 1,
-      senderRole: 'admin',
       subject: 'Community Update',
       rawBody: 'The pool will be closed this weekend.',
     });
@@ -211,14 +213,10 @@ describe('Messaging Integration — createAnnouncement', () => {
 
   it('getAnnouncements returns threads with announcement messages', async () => {
     await service.createAnnouncement({
-      senderId: 1,
-      senderRole: 'admin',
       subject: 'Announcement 1',
       rawBody: 'First announcement.',
     });
     await service.createAnnouncement({
-      senderId: 1,
-      senderRole: 'admin',
       subject: 'Announcement 2',
       rawBody: 'Second announcement.',
     });
@@ -235,12 +233,13 @@ describe('Messaging Integration — createTemplate', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
     await db.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
     await db.messageTemplates.clear();
   });
 
@@ -320,19 +319,18 @@ describe('Messaging Integration — masking policy', () => {
     TestBed2.configureTestingModule({
       imports: [(await import('@angular/router/testing')).RouterTestingModule],
       providers: [
-        MessagingService, DbService, AuditService, AuthService, CryptoService,
+        MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService,
       ],
     });
     const db2 = TestBed2.inject(DbService);
     const service2 = TestBed2.inject(MessagingService);
     await db2.open();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed2.inject(AuthService).selectRole('admin', 'harborpoint2024');
 
     const thread = await service2.createThread([1, 2], 'Masking Test');
     const msg = await service2.sendMessage({
       threadId: thread.id!,
-      senderId: 1,
-      senderRole: 'admin',
       rawBody: 'Contact admin@harborpoint.local or 555-123-4567',
       type: 'direct',
     });

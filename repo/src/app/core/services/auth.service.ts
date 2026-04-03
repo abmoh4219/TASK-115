@@ -36,6 +36,7 @@ const DEFAULT_PASSWORDS: RoleCredentials = {
 };
 
 const LS_LAST_ROLE = 'hp_last_role';
+const LS_CRYPTO_SALT = 'hp_crypto_salt';
 const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
 
 // Validation token storage key (stores encrypted test payload)
@@ -52,8 +53,13 @@ export class AuthService implements OnDestroy {
 
   readonly state$: Observable<AuthState> = this._state$.asObservable();
 
+  private _currentUserId: number | null = null;
   private inactivityTimer: ReturnType<typeof setTimeout> | null = null;
   private activityListeners: (() => void)[] = [];
+
+  private static readonly USER_ID_MAP: Record<string, number> = {
+    admin: 1, resident: 2, compliance: 3, analyst: 4,
+  };
 
   constructor(
     private crypto: CryptoService,
@@ -83,6 +89,7 @@ export class AuthService implements OnDestroy {
     if (!ok) {
       return { success: false, error: 'Invalid username or password' };
     }
+    this._currentUserId = AuthService.USER_ID_MAP[role] ?? null;
     return { success: true };
   }
 
@@ -115,6 +122,21 @@ export class AuthService implements OnDestroy {
 
     if (!passwordOk) return false;
 
+    // Derive session encryption key from password
+    let saltB64 = localStorage.getItem(LS_CRYPTO_SALT);
+    let salt: Uint8Array;
+    if (saltB64) {
+      salt = new Uint8Array(this.crypto.base64ToBuffer(saltB64));
+    } else {
+      salt = this.crypto.generateSalt();
+      saltB64 = this.crypto.bufferToBase64(salt);
+      localStorage.setItem(LS_CRYPTO_SALT, saltB64);
+    }
+    const sessionKey = await this.crypto.deriveKey(password, salt);
+    this.crypto.setSessionKey(sessionKey);
+
+    this._currentUserId = AuthService.USER_ID_MAP[role] ?? null;
+
     // Persist UX hint only (not used for guard checks)
     localStorage.setItem(LS_LAST_ROLE, role);
 
@@ -133,6 +155,8 @@ export class AuthService implements OnDestroy {
   // --------------------------------------------------
 
   lockSession(): void {
+    this._currentUserId = null;
+    this.crypto.setSessionKey(null);
     this._state$.next({
       role: this._state$.value.role,
       isLocked: true,
@@ -170,6 +194,10 @@ export class AuthService implements OnDestroy {
     return this._state$.value.role;
   }
 
+  getCurrentUserId(): number | null {
+    return this._currentUserId;
+  }
+
   isLoggedIn(): boolean {
     return this._state$.value.isLoggedIn && !this._state$.value.isLocked;
   }
@@ -187,6 +215,8 @@ export class AuthService implements OnDestroy {
   }
 
   logout(): void {
+    this._currentUserId = null;
+    this.crypto.setSessionKey(null);
     this._state$.next({ role: null, isLocked: false, isLoggedIn: false });
     this.clearInactivityTimer();
     this.router.navigate(['/login']);

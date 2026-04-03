@@ -12,6 +12,7 @@ import { AuditService } from '../src/app/core/services/audit.service';
 import { AnomalyService } from '../src/app/core/services/anomaly.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
+import { LoggerService } from '../src/app/core/services/logger.service';
 
 async function seedTestCourse(db: DbService, options?: {
   capacity?: number;
@@ -80,7 +81,7 @@ describe('Enrollment Integration — happy path', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -91,6 +92,7 @@ describe('Enrollment Integration — happy path', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -172,7 +174,7 @@ describe('Enrollment Integration — drop rules', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -183,6 +185,7 @@ describe('Enrollment Integration — drop rules', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -269,7 +272,7 @@ describe('Enrollment Integration — course & round management', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -280,6 +283,7 @@ describe('Enrollment Integration — course & round management', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -335,7 +339,7 @@ describe('Enrollment Integration — getEnrollmentHistory', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -346,6 +350,7 @@ describe('Enrollment Integration — getEnrollmentHistory', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {
@@ -398,7 +403,7 @@ describe('Enrollment Integration — checkPrerequisites', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -409,6 +414,7 @@ describe('Enrollment Integration — checkPrerequisites', () => {
     await db.residents.clear();
     await db.auditLogs.clear();
     await new Promise(r => setTimeout(r, 200));
+    await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   });
 
   afterEach(async () => {

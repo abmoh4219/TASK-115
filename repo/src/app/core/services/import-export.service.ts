@@ -3,7 +3,9 @@ import { saveAs } from 'file-saver';
 import { DbService } from './db.service';
 import { CryptoService } from './crypto.service';
 import { AuditAction, AuditService } from './audit.service';
+import { AuthService } from './auth.service';
 import { SearchService } from './search.service';
+import { LoggerService } from './logger.service';
 
 @Injectable({ providedIn: 'root' })
 export class ImportExportService {
@@ -12,14 +14,24 @@ export class ImportExportService {
     private db: DbService,
     private crypto: CryptoService,
     private audit: AuditService,
+    private authService: AuthService,
     private search: SearchService,
+    private logger: LoggerService,
   ) {}
+
+  private requireRole(...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    if (!current || !allowedRoles.includes(current)) {
+      throw new Error(`Unauthorized: requires role ${allowedRoles.join(' or ')}`);
+    }
+  }
 
   // --------------------------------------------------
   // Export — encrypt full dataset as .hpd file
   // --------------------------------------------------
 
   async exportData(password: string, actorId: number, actorRole: string): Promise<void> {
+    this.requireRole('admin');
     const snapshot = await this.db.exportAll();
     const json = JSON.stringify(snapshot);
 
@@ -44,6 +56,7 @@ export class ImportExportService {
     actorRole: string,
     overwrite = false,
   ): Promise<{ success: boolean; reason?: string }> {
+    this.requireRole('admin');
     try {
       const text = await file.text();
       const payload = JSON.parse(text);
@@ -87,7 +100,7 @@ export class ImportExportService {
 
       return { success: true };
     } catch (err) {
-      console.error('[ImportExportService] Import failed:', err);
+      this.logger.error('ImportExportService', 'Import failed', err);
       return { success: false, reason: 'UNKNOWN_ERROR' };
     }
   }

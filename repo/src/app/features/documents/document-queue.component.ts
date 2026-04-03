@@ -153,7 +153,7 @@ interface QueueRow {
       margin: 0 auto;
     }
 
-    // ── Header ─────────────────────────────────────
+    /* ── Header ───────────────────────────────────── */
 
     .page-header { margin-bottom: 1.75rem; }
 
@@ -190,7 +190,7 @@ interface QueueRow {
       margin: 0;
     }
 
-    // ── Queue table ────────────────────────────────
+    /* ── Queue table ──────────────────────────────── */
 
     .queue-table {
       background: #fff;
@@ -228,7 +228,7 @@ interface QueueRow {
       &:hover { background: #f9fafb; }
     }
 
-    // ── Resident cell ──────────────────────────────
+    /* ── Resident cell ────────────────────────────── */
 
     .col-resident {
       display: flex;
@@ -274,7 +274,7 @@ interface QueueRow {
       text-overflow: ellipsis;
     }
 
-    // ── Document cell ──────────────────────────────
+    /* ── Document cell ────────────────────────────── */
 
     .col-document {
       display: flex;
@@ -302,7 +302,7 @@ interface QueueRow {
       text-overflow: ellipsis;
     }
 
-    // ── Type tag ───────────────────────────────────
+    /* ── Type tag ─────────────────────────────────── */
 
     .col-type, .col-size {
       font-size: 0.8125rem;
@@ -318,7 +318,7 @@ interface QueueRow {
       color: #374151;
     }
 
-    // ── Waiting pill ───────────────────────────────
+    /* ── Waiting pill ─────────────────────────────── */
 
     .waiting-pill {
       display: inline-flex;
@@ -333,7 +333,7 @@ interface QueueRow {
       &--red   { background: #fee2e2; color: #991b1b; }
     }
 
-    // ── Review button ──────────────────────────────
+    /* ── Review button ────────────────────────────── */
 
     .col-action { display: flex; justify-content: flex-end; }
 
@@ -351,7 +351,7 @@ interface QueueRow {
       &:hover { background: #1e3a5f; color: #fff; border-color: #1e3a5f; }
     }
 
-    // ── Empty state ────────────────────────────────
+    /* ── Empty state ──────────────────────────────── */
 
     .empty-state {
       display: flex;
@@ -369,7 +369,7 @@ interface QueueRow {
 
     .empty-icon { margin-bottom: 0.25rem; }
 
-    // ── Skeleton ───────────────────────────────────
+    /* ── Skeleton ─────────────────────────────────── */
 
     @keyframes shimmer {
       0%   { background-position: 200% 0; }

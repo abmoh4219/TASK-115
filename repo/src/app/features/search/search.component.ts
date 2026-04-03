@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Subscription, Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Router } from '@angular/router';
 import { SearchService, SearchResult, SearchFilters, SearchFacets } from '../../core/services/search.service';
 import { ToastService } from '../../shared/components/toast/toast.service';
 
@@ -491,6 +492,8 @@ interface ActiveFilters {
     .result-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      border-left: 3px solid #2dd4bf;
+      background: #fafffe;
     }
     .result-card:hover .result-arrow { opacity: 1; transform: translateX(0); }
 
@@ -630,6 +633,7 @@ export class SearchComponent implements OnInit, OnDestroy {
   constructor(
     private searchSvc: SearchService,
     private toast:     ToastService,
+    private router:    Router,
     private cdr:       ChangeDetectorRef,
     private sanitizer: DomSanitizer,
   ) {}
@@ -771,8 +775,24 @@ export class SearchComponent implements OnInit, OnDestroy {
   }
 
   openResult(r: SearchResult): void {
-    // No-op navigation — results are informational in this build
-    // Future: router.navigate based on entityType + entityId
+    const type = r.entry.entityType;
+    const id   = r.entry.entityId;
+    switch (type) {
+      case 'resident':
+        this.router.navigate(['/residents'], { queryParams: { openId: id } });
+        break;
+      case 'course':
+        this.router.navigate(['/enrollment'], { queryParams: { openId: id } });
+        break;
+      case 'message':
+        this.router.navigate(['/messages'], { queryParams: { threadId: id } });
+        break;
+      case 'document':
+        this.router.navigate(['/residents'], { queryParams: { openId: id, tab: 'documents' } });
+        break;
+      default:
+        this.router.navigate(['/search']);
+    }
   }
 
   // ── Helpers ──────────────────────────────────────

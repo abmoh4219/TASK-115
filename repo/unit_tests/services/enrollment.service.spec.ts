@@ -15,15 +15,20 @@ import { AuditService } from '../../src/app/core/services/audit.service';
 import { AnomalyService } from '../../src/app/core/services/anomaly.service';
 import { AuthService } from '../../src/app/core/services/auth.service';
 import { CryptoService } from '../../src/app/core/services/crypto.service';
+import { LoggerService } from '../../src/app/core/services/logger.service';
 
-function setup() {
+async function setup() {
   TestBed.configureTestingModule({
     imports: [RouterTestingModule],
-    providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
+    providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
   });
+  const db = TestBed.inject(DbService);
+  await db.open();
+  await new Promise(r => setTimeout(r, 150));
+  await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   return {
     service: TestBed.inject(EnrollmentService),
-    db:      TestBed.inject(DbService),
+    db,
   };
 }
 
@@ -75,8 +80,7 @@ async function addOpenRound(db: DbService, courseId: number, overrides?: {
 describe('EnrollmentService — getCourses / createCourse', () => {
 
   it('createCourse stores and returns the new course', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const course = await service.createCourse({
       title:         'Mindfulness 101',
@@ -94,8 +98,7 @@ describe('EnrollmentService — getCourses / createCourse', () => {
   });
 
   it('getCourses returns all stored courses', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await service.createCourse({ title: 'Course A', description: '', category: 'A', prerequisites: [] });
     await service.createCourse({ title: 'Course B', description: '', category: 'B', prerequisites: [] });
@@ -115,8 +118,7 @@ describe('EnrollmentService — getCourses / createCourse', () => {
 describe('EnrollmentService — getCourseRounds / createRound', () => {
 
   it('createRound stores a round linked to the course', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const course = await service.createCourse({ title: 'Art', description: '', category: 'Arts', prerequisites: [] });
     const now    = new Date();
@@ -140,8 +142,7 @@ describe('EnrollmentService — getCourseRounds / createRound', () => {
   });
 
   it('getCourseRounds returns only rounds for the given course', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const c1 = await service.createCourse({ title: 'C1', description: '', category: 'X', prerequisites: [] });
     const c2 = await service.createCourse({ title: 'C2', description: '', category: 'X', prerequisites: [] });
@@ -172,8 +173,7 @@ describe('EnrollmentService — getCourseRounds / createRound', () => {
 describe('EnrollmentService — checkPrerequisites', () => {
 
   it('returns ok:true when resident is active and no other prerequisites', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const residentId = await addActiveResident(db);
     const courseId   = await db.courses.add({
@@ -190,8 +190,7 @@ describe('EnrollmentService — checkPrerequisites', () => {
   });
 
   it('returns ok:false PREREQ_NOT_ACTIVE_RESIDENT when resident is inactive', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const residentId = await db.residents.add({
       firstName: 'John', lastName: 'Inactive',
@@ -218,8 +217,7 @@ describe('EnrollmentService — checkPrerequisites', () => {
   });
 
   it('returns ok:false PREREQ_PRIOR_COMPLETION when required course not completed', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const residentId = await addActiveResident(db);
 
@@ -252,8 +250,7 @@ describe('EnrollmentService — checkPrerequisites', () => {
 describe('EnrollmentService — getEnrollmentHistory', () => {
 
   it('returns the historySnapshot in chronological order', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const residentId = await addActiveResident(db);
     const courseId   = await db.courses.add({
@@ -277,8 +274,7 @@ describe('EnrollmentService — getEnrollmentHistory', () => {
   });
 
   it('returns empty array for unknown enrollmentId', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const history = await service.getEnrollmentHistory(999_999);
     expect(history).toEqual([]);
@@ -295,8 +291,7 @@ describe('EnrollmentService — getEnrollmentHistory', () => {
 describe('EnrollmentService ��� duplicate enrollment rejection', () => {
 
   it('rejects repeat enroll attempts as ALREADY_ENROLLED', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     const residentId = await addActiveResident(db);
     const courseId   = await db.courses.add({
