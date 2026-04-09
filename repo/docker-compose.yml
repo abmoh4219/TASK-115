@@ -16,3 +16,15 @@ services:
     container_name: harborpoint-tests
     profiles:
       - test
+
+  e2e:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    container_name: harborpoint-e2e
+    depends_on:
+      - app
+    environment:
+      - E2E_BASE_URL=http://app:80
+    profiles:
+      - e2e

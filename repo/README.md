@@ -2,20 +2,23 @@
 
 Resident & Services Management System — fully offline Angular SPA for on-site property teams.
 
-## Run
+## Quick Start (local)
 ```bash
-docker compose up --build
+npm install
+npm start
 ```
 Open **http://localhost:4200**
 
-## Test
+## Build
 ```bash
-docker compose run --build test
+npm run build
 ```
 
-## Stop
+## Test
 ```bash
-docker compose down
+npm run test:unit    # unit tests
+npm run test:api     # integration tests
+npm run test:e2e     # browser E2E tests (Playwright)
 ```
 
 ## Login
@@ -29,19 +32,24 @@ Enter a username and password on the login screen.
 | Compliance Reviewer | compliance | harborpoint2024 |
 | Operations Analyst | analyst | harborpoint2024 |
 
-Default credentials are defined in the source code (`auth.service.ts`) for deterministic QA access. Users may change their password via the Settings page after login; the new password is stored as an encrypted validation token in localStorage and the default is no longer accepted for that role.
+Default credentials are defined in the source code (`auth.service.ts`) for deterministic QA access. Administrators may change their password via the admin-only **Settings** page; the new password is stored as an encrypted validation token in localStorage and the default is no longer accepted for that role.
 
-## Local Development (without Docker)
+## Docker
+
 ```bash
-npm install
-npm start
-```
-Open http://localhost:4200
-```bash
-# Run tests locally
-npm run test:unit    # unit tests
-npm run test:api     # integration tests
+# Run the app
+docker compose up --build
+# Open http://localhost:4200
+
+# Run unit + integration tests
+docker compose run --build test
+
+# Run browser E2E tests
+docker compose --profile e2e up --build --abort-on-container-exit
+
+# Stop
+docker compose down
 ```
 
 ## Stack
-Angular 17 · TypeScript · IndexedDB (Dexie.js) · Web Crypto API · Lunr.js · Chart.js · Nginx · Docker
+Angular 17 · TypeScript · IndexedDB (Dexie.js) · Web Crypto API · Lunr.js · Chart.js · Playwright · Nginx · Docker
