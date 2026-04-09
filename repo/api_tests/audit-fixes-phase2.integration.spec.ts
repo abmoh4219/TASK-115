@@ -123,7 +123,7 @@ describe('F-H-01 — Encrypted resident IDs', () => {
       firstName: 'Test', lastName: 'Encrypted',
       email: 'enctest@hp.local', phone: '555-0000',
       dateOfBirth: new Date('1990-01-01'), status: 'active',
-    }, 1, 'admin');
+    });
 
     expect(r.encryptedId).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
 

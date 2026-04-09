@@ -105,7 +105,7 @@ describe('Enrollment Integration — happy path', () => {
     const residentId = await seedActiveResident(db);
     const { roundId } = await seedTestCourse(db);
 
-    const result = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const result = await enrollmentService.enroll(residentId, roundId);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.status).toBe('enrolled');
@@ -119,10 +119,10 @@ describe('Enrollment Integration — happy path', () => {
     const r1 = await seedActiveResident(db);
     const r2 = await seedActiveResident(db);
 
-    const e1 = await enrollmentService.enroll(r1, roundId, 'resident');
+    const e1 = await enrollmentService.enroll(r1, roundId);
     expect(e1.success && e1.status).toBe('enrolled');
 
-    const e2 = await enrollmentService.enroll(r2, roundId, 'resident');
+    const e2 = await enrollmentService.enroll(r2, roundId);
     expect(e2.success && e2.status).toBe('waitlisted');
   });
 
@@ -132,9 +132,9 @@ describe('Enrollment Integration — happy path', () => {
     const r2 = await seedActiveResident(db);
     const r3 = await seedActiveResident(db);
 
-    await enrollmentService.enroll(r1, roundId, 'resident');
-    await enrollmentService.enroll(r2, roundId, 'resident');
-    const e3 = await enrollmentService.enroll(r3, roundId, 'resident');
+    await enrollmentService.enroll(r1, roundId);
+    await enrollmentService.enroll(r2, roundId);
+    const e3 = await enrollmentService.enroll(r3, roundId);
 
     expect(e3.success).toBe(false);
     if (!e3.success) expect(e3.reason).toBe('CAPACITY_EXCEEDED');
@@ -144,8 +144,8 @@ describe('Enrollment Integration — happy path', () => {
     const residentId = await seedActiveResident(db);
     const { roundId } = await seedTestCourse(db);
 
-    await enrollmentService.enroll(residentId, roundId, 'resident');
-    const second = await enrollmentService.enroll(residentId, roundId, 'resident');
+    await enrollmentService.enroll(residentId, roundId);
+    const second = await enrollmentService.enroll(residentId, roundId);
 
     expect(second.success).toBe(false);
     if (!second.success) expect(second.reason).toBe('ALREADY_ENROLLED');
@@ -162,7 +162,7 @@ describe('Enrollment Integration — happy path', () => {
       createdAt: new Date(), updatedAt: new Date(),
     });
     const { roundId } = await seedTestCourse(db);
-    const result = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const result = await enrollmentService.enroll(residentId, roundId);
     expect(result.success).toBe(false);
     if (!result.success) expect(result.reason).toBe('PREREQ_NOT_ACTIVE_RESIDENT');
   });
@@ -197,11 +197,11 @@ describe('Enrollment Integration — drop rules', () => {
   it('allows drop before cutoff', async () => {
     const residentId = await seedActiveResident(db);
     const { roundId } = await seedTestCourse(db, { dropCutoffFuture: true });
-    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const enroll = await enrollmentService.enroll(residentId, roundId);
     expect(enroll.success).toBe(true);
 
     if (enroll.success) {
-      const drop = await enrollmentService.drop(enroll.enrollment.id!, residentId, 'resident', 'VOLUNTARY_DEPARTURE');
+      const drop = await enrollmentService.drop(enroll.enrollment.id!, 'VOLUNTARY_DEPARTURE');
       expect(drop.success).toBe(true);
     }
   });
@@ -213,10 +213,10 @@ describe('Enrollment Integration — drop rules', () => {
       startHoursFromNow: 1,
       dropCutoffFuture: false,
     });
-    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const enroll = await enrollmentService.enroll(residentId, roundId);
 
     if (enroll.success) {
-      const drop = await enrollmentService.drop(enroll.enrollment.id!, residentId, 'resident', 'VOLUNTARY');
+      const drop = await enrollmentService.drop(enroll.enrollment.id!, 'VOLUNTARY');
       expect(drop.success).toBe(false);
       if (!drop.success) expect(drop.reason).toBe('DROP_CUTOFF_PASSED');
     }
@@ -227,14 +227,14 @@ describe('Enrollment Integration — drop rules', () => {
     const r1 = await seedActiveResident(db);
     const r2 = await seedActiveResident(db);
 
-    const e1 = await enrollmentService.enroll(r1, roundId, 'resident');
-    const e2 = await enrollmentService.enroll(r2, roundId, 'resident'); // goes to waitlist
+    const e1 = await enrollmentService.enroll(r1, roundId);
+    const e2 = await enrollmentService.enroll(r2, roundId); // goes to waitlist
 
     expect(e1.success && e1.status).toBe('enrolled');
     expect(e2.success && e2.status).toBe('waitlisted');
 
     if (e1.success) {
-      await enrollmentService.drop(e1.enrollment.id!, r1, 'resident', 'VOLUNTARY');
+      await enrollmentService.drop(e1.enrollment.id!, 'VOLUNTARY');
     }
 
     // r2 should now be enrolled
@@ -247,13 +247,13 @@ describe('Enrollment Integration — drop rules', () => {
   it('enrollment history is immutable — new entry appended on each state change', async () => {
     const residentId = await seedActiveResident(db);
     const { roundId } = await seedTestCourse(db, { dropCutoffFuture: true });
-    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const enroll = await enrollmentService.enroll(residentId, roundId);
     expect(enroll.success).toBe(true);
 
     if (enroll.success) {
       expect(enroll.enrollment.historySnapshot.length).toBe(1);
 
-      await enrollmentService.drop(enroll.enrollment.id!, residentId, 'resident', 'VOLUNTARY');
+      await enrollmentService.drop(enroll.enrollment.id!, 'VOLUNTARY');
       const updated = await db.enrollments.get(enroll.enrollment.id!);
       expect(updated?.historySnapshot.length).toBe(2);
       expect(updated?.historySnapshot[0].status).toBe('enrolled');
@@ -362,7 +362,7 @@ describe('Enrollment Integration — getEnrollmentHistory', () => {
   it('returns single enrolled entry after initial enroll', async () => {
     const residentId = await seedActiveResident(db);
     const { roundId } = await seedTestCourse(db);
-    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const enroll = await enrollmentService.enroll(residentId, roundId);
     expect(enroll.success).toBe(true);
 
     if (enroll.success) {
@@ -375,11 +375,11 @@ describe('Enrollment Integration — getEnrollmentHistory', () => {
   it('returns two entries after enroll then drop', async () => {
     const residentId = await seedActiveResident(db);
     const { roundId } = await seedTestCourse(db, { dropCutoffFuture: true });
-    const enroll = await enrollmentService.enroll(residentId, roundId, 'resident');
+    const enroll = await enrollmentService.enroll(residentId, roundId);
     expect(enroll.success).toBe(true);
 
     if (enroll.success) {
-      await enrollmentService.drop(enroll.enrollment.id!, residentId, 'resident', 'VOLUNTARY');
+      await enrollmentService.drop(enroll.enrollment.id!, 'VOLUNTARY');
       const history = await enrollmentService.getEnrollmentHistory(enroll.enrollment.id!);
       expect(history.length).toBe(2);
       expect(history[1].status).toBe('dropped');

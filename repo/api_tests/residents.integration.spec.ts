@@ -66,7 +66,7 @@ describe('Resident Integration — CRUD', () => {
   afterEach(async () => { await teardown(db); });
 
   it('creates a resident and retrieves it by id', async () => {
-    const created = await service.createResident(BASE, 1, 'admin');
+    const created = await service.createResident(BASE);
     expect(created.id).toBeDefined();
 
     const fetched = await service.getResident(created.id!);
@@ -76,7 +76,7 @@ describe('Resident Integration — CRUD', () => {
   });
 
   it('encryptedId is stored in ciphertext.iv format', async () => {
-    const r = await service.createResident(BASE, 1, 'admin');
+    const r = await service.createResident(BASE);
     const parts = r.encryptedId.split('.');
     expect(parts.length).toBe(2);
     expect(parts[0].length).toBeGreaterThan(0);
@@ -85,16 +85,16 @@ describe('Resident Integration — CRUD', () => {
 
   it('getResidents returns the created resident', async () => {
     const created = await service.createResident(
-      { ...BASE, email: 'unique-create@hp.local' }, 1, 'admin',
+      { ...BASE, email: 'unique-create@hp.local' },
     );
     const all = await service.getResidents();
     expect(all.some(r => r.id === created.id)).toBe(true);
   });
 
   it('updates a resident and persists changes', async () => {
-    const r = await service.createResident(BASE, 1, 'admin');
+    const r = await service.createResident(BASE);
     const { resident: updated } = await service.updateResident(
-      r.id!, { firstName: 'Updated', status: 'pending' }, 1, 'admin',
+      r.id!, { firstName: 'Updated', status: 'pending' },
     );
     expect(updated.firstName).toBe('Updated');
     expect(updated.status).toBe('pending');
@@ -118,7 +118,7 @@ describe('Resident Integration — Audit trail', () => {
   afterEach(async () => { await teardown(db); });
 
   it('audit log contains RESIDENT_CREATED entry after create', async () => {
-    const r = await service.createResident(BASE, 1, 'admin');
+    const r = await service.createResident(BASE);
     const logs = await db.auditLogs
       .filter(l => l.action === 'RESIDENT_CREATED' && Number(l.targetId) === r.id)
       .toArray();
@@ -126,7 +126,7 @@ describe('Resident Integration — Audit trail', () => {
   });
 
   it('audit log after create does not expose raw encryptedId', async () => {
-    const r = await service.createResident(BASE, 1, 'admin');
+    const r = await service.createResident(BASE);
     const logs = await db.auditLogs
       .filter(l => Number(l.targetId) === r.id)
       .toArray();
@@ -136,8 +136,8 @@ describe('Resident Integration — Audit trail', () => {
   });
 
   it('audit log contains RESIDENT_UPDATED with before/after snapshots', async () => {
-    const r = await service.createResident(BASE, 1, 'admin');
-    await service.updateResident(r.id!, { phone: '555-9876' }, 1, 'admin');
+    const r = await service.createResident(BASE);
+    await service.updateResident(r.id!, { phone: '555-9876' });
 
     const logs = await db.auditLogs
       .filter(l => l.action === 'RESIDENT_UPDATED' && Number(l.targetId) === r.id)
@@ -164,8 +164,8 @@ describe('Resident Integration — Filters', () => {
   afterEach(async () => { await teardown(db); });
 
   it('status filter returns only matching residents', async () => {
-    await service.createResident({ ...BASE, email: 'a@hp.local', status: 'active' }, 1, 'admin');
-    await service.createResident({ ...BASE, email: 'b@hp.local', status: 'inactive' }, 1, 'admin');
+    await service.createResident({ ...BASE, email: 'a@hp.local', status: 'active' });
+    await service.createResident({ ...BASE, email: 'b@hp.local', status: 'inactive' });
 
     const active = await service.getResidents({ status: ['active'] });
     for (const r of active) {
@@ -179,8 +179,8 @@ describe('Resident Integration — Filters', () => {
   });
 
   it('search filter matches partial first name', async () => {
-    await service.createResident({ ...BASE, firstName: 'Zelda', email: 'zelda@hp.local' }, 1, 'admin');
-    await service.createResident({ ...BASE, firstName: 'Arthur', email: 'arthur@hp.local' }, 1, 'admin');
+    await service.createResident({ ...BASE, firstName: 'Zelda', email: 'zelda@hp.local' });
+    await service.createResident({ ...BASE, firstName: 'Arthur', email: 'arthur@hp.local' });
 
     const results = await service.getResidents({ search: 'zelda' });
     expect(results.some(r => r.firstName === 'Zelda')).toBe(true);
@@ -199,7 +199,7 @@ describe('Resident Integration — Filters', () => {
     if (rooms.length === 0) return;
 
     const r = await service.createResident(
-      { ...BASE, email: 'bldfilter@hp.local' }, 1, 'admin',
+      { ...BASE, email: 'bldfilter@hp.local' },
     );
 
     await property.moveIn({
@@ -207,8 +207,6 @@ describe('Resident Integration — Filters', () => {
       roomId:        rooms[0].id!,
       effectiveFrom: new Date(),
       reasonCode:    ReasonCode.MOVE_IN_NEW,
-      actorId:       1,
-      actorRole:     'admin',
     });
 
     const inBuilding = await service.getResidents({ buildingId: building.id! });
@@ -231,7 +229,7 @@ describe('Resident Integration — Inactive-occupancy warning', () => {
   afterEach(async () => { await teardown(db); });
 
   it('warns when setting status to inactive while resident has active occupancy', async () => {
-    const r = await service.createResident({ ...BASE, email: 'warn@hp.local' }, 1, 'admin');
+    const r = await service.createResident({ ...BASE, email: 'warn@hp.local' });
 
     await db.occupancies.add({
       residentId:    r.id!,
@@ -243,7 +241,7 @@ describe('Resident Integration — Inactive-occupancy warning', () => {
     });
 
     const { warnings } = await service.updateResident(
-      r.id!, { status: 'inactive' }, 1, 'admin',
+      r.id!, { status: 'inactive' },
     );
 
     expect(warnings.length).toBeGreaterThan(0);
@@ -251,10 +249,10 @@ describe('Resident Integration — Inactive-occupancy warning', () => {
   });
 
   it('no warning when setting inactive for resident with no occupancy', async () => {
-    const r = await service.createResident({ ...BASE, email: 'nowarn@hp.local' }, 1, 'admin');
+    const r = await service.createResident({ ...BASE, email: 'nowarn@hp.local' });
 
     const { warnings } = await service.updateResident(
-      r.id!, { status: 'inactive' }, 1, 'admin',
+      r.id!, { status: 'inactive' },
     );
 
     expect(warnings.length).toBe(0);
@@ -275,11 +273,11 @@ describe('Resident Integration — Change log', () => {
   afterEach(async () => { await teardown(db); });
 
   it('getChangeLog returns entries for only the target resident', async () => {
-    const r1 = await service.createResident({ ...BASE, email: 'cl1@hp.local' }, 1, 'admin');
-    const r2 = await service.createResident({ ...BASE, email: 'cl2@hp.local' }, 1, 'admin');
+    const r1 = await service.createResident({ ...BASE, email: 'cl1@hp.local' });
+    const r2 = await service.createResident({ ...BASE, email: 'cl2@hp.local' });
 
-    await service.updateResident(r1.id!, { phone: '111-0001' }, 1, 'admin');
-    await service.updateResident(r2.id!, { phone: '222-0002' }, 1, 'admin');
+    await service.updateResident(r1.id!, { phone: '111-0001' });
+    await service.updateResident(r2.id!, { phone: '222-0002' });
 
     const log = await service.getChangeLog(r1.id!);
     for (const entry of log) {
@@ -288,9 +286,9 @@ describe('Resident Integration — Change log', () => {
   });
 
   it('getChangeLog is sorted descending by timestamp', async () => {
-    const r = await service.createResident({ ...BASE, email: 'sort@hp.local' }, 1, 'admin');
-    await service.updateResident(r.id!, { phone: '555-1111' }, 1, 'admin');
-    await service.updateResident(r.id!, { phone: '555-2222' }, 1, 'admin');
+    const r = await service.createResident({ ...BASE, email: 'sort@hp.local' });
+    await service.updateResident(r.id!, { phone: '555-1111' });
+    await service.updateResident(r.id!, { phone: '555-2222' });
 
     const log = await service.getChangeLog(r.id!);
     expect(log.length).toBeGreaterThanOrEqual(3);
@@ -320,7 +318,7 @@ describe('Resident Integration — searchResidents', () => {
   });
 
   it('finds residents by email substring', async () => {
-    await service.createResident({ ...BASE, email: 'findbyme@hp.local' }, 1, 'admin');
+    await service.createResident({ ...BASE, email: 'findbyme@hp.local' });
 
     const results = await service.searchResidents('findbyme');
     expect(results.some(r => r.email === 'findbyme@hp.local')).toBe(true);
@@ -328,7 +326,7 @@ describe('Resident Integration — searchResidents', () => {
 
   it('finds residents by last name', async () => {
     await service.createResident(
-      { ...BASE, lastName: 'Unique123', email: 'unique123@hp.local' }, 1, 'admin',
+      { ...BASE, lastName: 'Unique123', email: 'unique123@hp.local' },
     );
 
     const results = await service.searchResidents('Unique123');

@@ -29,7 +29,7 @@ Enter a username and password on the login screen.
 | Compliance Reviewer | compliance | harborpoint2024 |
 | Operations Analyst | analyst | harborpoint2024 |
 
-Credentials are listed in the README only — they do not appear anywhere in the application UI.
+Default credentials are defined in the source code (`auth.service.ts`) for deterministic QA access. Users may change their password via the Settings page after login; the new password is stored as an encrypted validation token in localStorage and the default is no longer accepted for that role.
 
 ## Local Development (without Docker)
 ```bash

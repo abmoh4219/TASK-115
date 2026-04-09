@@ -653,7 +653,7 @@ export class SettingsComponent implements OnInit {
     this.exporting = true;
     this.cdr.markForCheck();
     try {
-      await this.importExport.exportData(this.exportPassword, 1, 'admin');
+      await this.importExport.exportData(this.exportPassword);
       this.toast.success('Data exported successfully');
       this.exportModalOpen = false;
       this.exportPassword = '';
@@ -683,7 +683,7 @@ export class SettingsComponent implements OnInit {
     this.cdr.markForCheck();
     try {
       const result = await this.importExport.importData(
-        this.importFile, this.importPassword, 1, 'admin',
+        this.importFile, this.importPassword,
         this.importMode === 'overwrite',
       );
       this.importModalOpen = false;

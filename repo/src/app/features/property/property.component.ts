@@ -115,9 +115,6 @@ export class PropertyComponent implements OnInit {
 
   readonly skeletonItems = [1, 2, 3];
 
-  private actorRole = 'admin';
-  private actorId = 1;
-
   constructor(
     private propertyService: PropertyService,
     private db: DbService,
@@ -132,9 +129,6 @@ export class PropertyComponent implements OnInit {
   // -------------------------------------------------------
 
   ngOnInit(): void {
-    this.authService.state$.subscribe(s => {
-      this.actorRole = s.role ?? 'admin';
-    });
     this.initForms();
     this.loadData();
   }
@@ -281,8 +275,6 @@ export class PropertyComponent implements OnInit {
       const { name, address, floors } = this.buildingForm.value;
       await this.propertyService.createBuilding(
         { name, address, floors: Number(floors) },
-        this.actorId,
-        this.actorRole,
       );
       this.toast.show(`Building "${name}" created`, 'success');
       this.addBuildingOpen = false;
@@ -318,8 +310,6 @@ export class PropertyComponent implements OnInit {
           floor: Number(floor),
           type,
         },
-        this.actorId,
-        this.actorRole,
       );
       this.toast.show(`Unit ${unitNumber} created`, 'success');
       this.addUnitOpen = false;
@@ -357,8 +347,6 @@ export class PropertyComponent implements OnInit {
       const { roomNumber, capacity } = this.roomForm.value;
       await this.propertyService.createRoom(
         { unitId: this.selectedUnit.id!, roomNumber, capacity: Number(capacity) },
-        this.actorId,
-        this.actorRole,
       );
       this.toast.show(`Room ${roomNumber} created`, 'success');
       this.addRoomOpen = false;
@@ -399,8 +387,6 @@ export class PropertyComponent implements OnInit {
         roomId:        this.selectedRoom.id!,
         effectiveFrom: payload.effectiveFrom,
         reasonCode:    payload.reasonCode,
-        actorId:       this.actorId,
-        actorRole:     this.actorRole,
       });
       this.toast.show('Move-in completed successfully', 'success');
       this.moveInOpen = false;
@@ -434,8 +420,6 @@ export class PropertyComponent implements OnInit {
         residentId:  this.moveOutData.occupancy.residentId,
         effectiveTo: payload.effectiveTo,
         reasonCode:  payload.reasonCode,
-        actorId:     this.actorId,
-        actorRole:   this.actorRole,
       });
       this.toast.show('Move-out completed successfully', 'success');
       this.moveOutOpen = false;

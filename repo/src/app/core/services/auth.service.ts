@@ -280,6 +280,7 @@ export class AuthService implements OnDestroy {
 
     const newToken = await this.crypto.createValidationToken(newPassword);
     localStorage.setItem(validationKey, JSON.stringify(newToken));
+
     return true;
   }
 

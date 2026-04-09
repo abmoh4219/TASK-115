@@ -16,6 +16,7 @@ import { RoleBadgeComponent } from '../../shared/components/role-badge/role-badg
 import { AuditService, AuditAction } from '../../core/services/audit.service';
 import { AuditLog } from '../../core/services/db.service';
 import { UserRole } from '../../core/services/auth.service';
+import { CryptoService } from '../../core/services/crypto.service';
 
 // =====================================================
 // AuditLogComponent
@@ -188,15 +189,24 @@ import { UserRole } from '../../core/services/auth.service';
         [open]="exportModalOpen"
         title="Export Audit Log"
         type="warning"
-        confirmLabel="Export"
+        confirmLabel="Export (Encrypted)"
         (confirmed)="doExport()"
-        (cancelled)="exportModalOpen = false">
+        (cancelled)="exportModalOpen = false; exportPassword = ''">
         <div class="export-warn">
           <mat-icon class="warn-icon">shield</mat-icon>
           <p>
-            You are about to export <strong>{{ filteredLogs.length }}</strong> audit log entries as JSON.
-            This may contain sensitive operational data. Handle with care.
+            You are about to export <strong>{{ filteredLogs.length }}</strong> audit log entries
+            as an encrypted file. Enter a password to protect the export.
           </p>
+          <div style="margin-top: 0.75rem">
+            <label style="display: block; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.25rem">
+              Export Password
+            </label>
+            <input type="password" [(ngModel)]="exportPassword"
+              placeholder="Enter encryption password"
+              style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem"
+            />
+          </div>
         </div>
       </app-modal>
     </div>
@@ -403,9 +413,11 @@ export class AuditLogComponent implements OnInit {
 
   // Export modal
   exportModalOpen = false;
+  exportPassword  = '';
 
   constructor(
     private auditService: AuditService,
+    private crypto:       CryptoService,
     private cdr:          ChangeDetectorRef,
   ) {}
 
@@ -494,16 +506,20 @@ export class AuditLogComponent implements OnInit {
   // Export
   // --------------------------------------------------
 
-  doExport(): void {
-    const data = JSON.stringify(this.filteredLogs, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+  async doExport(): Promise<void> {
+    if (!this.exportPassword) return;
+    const json = JSON.stringify(this.filteredLogs, null, 2);
+    const payload = await this.crypto.encrypt(json, this.exportPassword);
+    const payloadJson = JSON.stringify(payload);
+    const blob = new Blob([payloadJson], { type: 'application/octet-stream' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `harborpoint-audit-${Date.now()}.json`;
+    a.download = `harborpoint-audit-${Date.now()}.hpd`;
     a.click();
     URL.revokeObjectURL(url);
     this.exportModalOpen = false;
+    this.exportPassword  = '';
     this.cdr.markForCheck();
   }
 }

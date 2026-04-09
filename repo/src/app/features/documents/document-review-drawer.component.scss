@@ -1,0 +1,319 @@
+    :host { display: block; }
+
+    /* ── Two-section layout ───────────────────────── */
+
+    .review-layout {
+      display: flex;
+      gap: 1.25rem;
+      padding: 1.25rem 1.5rem;
+      height: 100%;
+      overflow: auto;
+    }
+
+    /* ── Preview panel (60%) ──────────────────────── */
+
+    .preview-panel {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .preview-label {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .preview-image-wrap {
+      flex: 1;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+    }
+
+    .preview-image {
+      max-width: 100%;
+      max-height: 500px;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .preview-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      min-height: 200px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      color: #9ca3af;
+      font-size: 0.875rem;
+    }
+
+    .preview-loading__spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #2dd4bf;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .preview-pdf {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.625rem;
+      min-height: 240px;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .preview-pdf__label { font-size: 0.875rem; font-weight: 700; color: #991b1b; margin: 0; }
+    .preview-pdf__name  { font-size: 0.8125rem; color: #6b7280; margin: 0; }
+
+    .preview-error {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      color: #9ca3af;
+      font-size: 0.875rem;
+    }
+
+    /* ── Decision panel (40%) ─────────────────────── */
+
+    .decision-panel {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* ── Resident card ────────────────────────────── */
+
+    .resident-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+    }
+
+    .resident-card__avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .resident-card__name  { font-size: 0.9375rem; font-weight: 700; color: #111827; margin: 0 0 0.125rem; }
+    .resident-card__email { font-size: 0.75rem; color: #6b7280; margin: 0; }
+
+    /* ── Doc metadata ─────────────────────────────── */
+
+    .doc-meta-card {
+      border: 1px solid #f3f4f6;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .doc-meta-row {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 0.875rem;
+      border-bottom: 1px solid #f3f4f6;
+
+      &:last-child { border-bottom: none; }
+    }
+
+    .doc-meta-label {
+      width: 70px;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+
+    .doc-meta-value { font-size: 0.8125rem; color: #374151; font-weight: 500; }
+
+    .status-badge {
+      display: inline-flex;
+      padding: 1px 8px;
+      border-radius: 12px;
+      font-size: 0.6875rem;
+      font-weight: 700;
+
+      &--pending_review { background: #fef3c7; color: #92400e; }
+      &--approved        { background: #d1fae5; color: #065f46; }
+      &--rejected        { background: #fee2e2; color: #991b1b; }
+    }
+
+    /* ── Decision ─────────────────────────────────── */
+
+    .decision-label {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .decision-buttons {
+      display: flex;
+      gap: 0.625rem;
+    }
+
+    .btn-approve {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.625rem;
+      border: none;
+      border-radius: 8px;
+      background: #16a34a;
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 150ms;
+
+      &:hover:not(:disabled) { background: #15803d; }
+      &:disabled { opacity: 0.5; cursor: default; }
+    }
+
+    .btn-reject-outline {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.625rem;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      background: #fff;
+      color: #dc2626;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 150ms;
+
+      &:hover:not(:disabled) { background: #fef2f2; }
+      &:disabled { opacity: 0.5; cursor: default; }
+    }
+
+    /* ── Reject form ──────────────────────────────── */
+
+    .reject-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .reject-form__actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .btn-reject {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #dc2626;
+      color: #fff;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 150ms;
+
+      &:hover:not(:disabled) { background: #b91c1c; }
+      &:disabled { opacity: 0.5; cursor: default; }
+    }
+
+    /* ── Buttons ──────────────────────────────────── */
+
+    .btn-ghost {
+      padding: 0.375rem 0.875rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+
+      &:hover { background: #f9fafb; }
+      &:disabled { opacity: 0.5; cursor: default; }
+    }
+
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+      margin-top: 0.25rem;
+      transition: background 150ms;
+
+      &:hover { background: #f9fafb; }
+    }
+
+    /* ── Already reviewed ─────────────────────────── */
+
+    .already-reviewed {
+      padding: 0.75rem;
+      background: #f9fafb;
+      border-radius: 8px;
+      font-size: 0.875rem;
+
+      &--approved { color: #16a34a; font-weight: 700; margin: 0; }
+      &--rejected { color: #dc2626; font-weight: 700; margin: 0 0 0.375rem; }
+
+      &__notes {
+        font-size: 0.8125rem;
+        color: #374151;
+        margin: 0;
+        background: #fef2f2;
+        padding: 0.625rem;
+        border-radius: 6px;
+        border: 1px solid #fca5a5;
+      }
+    }
+  

@@ -18,46 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
       </div>
     </div>
   `,
-  styles: [`
-    :host { display: block; }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 4rem 2rem;
-      text-align: center;
-
-      &--compact {
-        padding: 2rem 1rem;
-        .empty-state__icon { font-size: 2.5rem; width: 2.5rem; height: 2.5rem; }
-        .empty-state__title { font-size: 0.9375rem; }
-      }
-    }
-
-    .empty-state__icon-wrap {
-      width: 80px; height: 80px; border-radius: 50%;
-      background: #f1f5f9;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 1.25rem;
-    }
-
-    .empty-state__icon {
-      font-size: 3rem; width: 3rem; height: 3rem; color: #cbd5e1;
-    }
-
-    .empty-state__title {
-      font-size: 1.0625rem; font-weight: 600; color: #374151; margin: 0 0 0.5rem;
-    }
-
-    .empty-state__desc {
-      font-size: 0.875rem; color: #6b7280; margin: 0 0 1.5rem;
-      max-width: 360px; line-height: 1.6;
-    }
-
-    .empty-state__action:empty { display: none; }
-  `],
+  styleUrls: ['./empty-state.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EmptyStateComponent {

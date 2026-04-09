@@ -63,7 +63,7 @@ describe('ResidentService — createResident', () => {
   it('stores resident with correct fields and returns an id', async () => {
     const { service, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
 
     expect(r.id).toBeDefined();
     expect(r.firstName).toBe('Jane');
@@ -80,7 +80,7 @@ describe('ResidentService — createResident', () => {
   it('stores encryptedId in ciphertext.iv format', async () => {
     const { service, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
 
     // Format: base64chars.base64chars
     expect(r.encryptedId).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
@@ -91,7 +91,7 @@ describe('ResidentService — createResident', () => {
   it('writes an audit log entry with encryptedId masked', async () => {
     const { service, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
 
     const logs = await db.auditLogs
       .filter(l => l.targetType === 'resident' && Number(l.targetId) === r.id)
@@ -117,8 +117,8 @@ describe('ResidentService — getResidents filters', () => {
   it('returns all residents when no filters provided', async () => {
     const { service, db } = await setup();
 
-    await service.createResident(BASE_DATA, 1, 'admin');
-    await service.createResident({ ...BASE_DATA, firstName: 'Bob', email: 'bob@hp.local', status: 'inactive' }, 1, 'admin');
+    await service.createResident(BASE_DATA);
+    await service.createResident({ ...BASE_DATA, firstName: 'Bob', email: 'bob@hp.local', status: 'inactive' });
 
     const all = await service.getResidents();
     expect(all.length).toBeGreaterThanOrEqual(2);
@@ -129,8 +129,8 @@ describe('ResidentService — getResidents filters', () => {
   it('filters by status', async () => {
     const { service, db } = await setup();
 
-    await service.createResident({ ...BASE_DATA, email: 'r1@hp.local', status: 'active' }, 1, 'admin');
-    await service.createResident({ ...BASE_DATA, email: 'r2@hp.local', status: 'inactive' }, 1, 'admin');
+    await service.createResident({ ...BASE_DATA, email: 'r1@hp.local', status: 'active' });
+    await service.createResident({ ...BASE_DATA, email: 'r2@hp.local', status: 'inactive' });
 
     const active = await service.getResidents({ status: ['active'] });
     for (const r of active) {
@@ -143,8 +143,8 @@ describe('ResidentService — getResidents filters', () => {
   it('filters by search query (name and email)', async () => {
     const { service, db } = await setup();
 
-    await service.createResident({ ...BASE_DATA, firstName: 'Alice', email: 'alice@hp.local' }, 1, 'admin');
-    await service.createResident({ ...BASE_DATA, firstName: 'Charlie', email: 'charlie@hp.local' }, 1, 'admin');
+    await service.createResident({ ...BASE_DATA, firstName: 'Alice', email: 'alice@hp.local' });
+    await service.createResident({ ...BASE_DATA, firstName: 'Charlie', email: 'charlie@hp.local' });
 
     const results = await service.getResidents({ search: 'alice' });
     expect(results.some(r => r.firstName === 'Alice')).toBe(true);
@@ -163,9 +163,9 @@ describe('ResidentService — updateResident', () => {
   it('updates fields and returns the updated resident', async () => {
     const { service, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
     const { resident: updated } = await service.updateResident(
-      r.id!, { firstName: 'Janet' }, 1, 'admin',
+      r.id!, { firstName: 'Janet' },
     );
 
     expect(updated.firstName).toBe('Janet');
@@ -177,7 +177,7 @@ describe('ResidentService — updateResident', () => {
   it('returns a warning when setting inactive with active occupancy', async () => {
     const { service, property, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
 
     // Create an active occupancy for this resident
     await db.occupancies.add({
@@ -190,7 +190,7 @@ describe('ResidentService — updateResident', () => {
     });
 
     const { warnings } = await service.updateResident(
-      r.id!, { status: 'inactive' }, 1, 'admin',
+      r.id!, { status: 'inactive' },
     );
 
     expect(warnings.length).toBeGreaterThan(0);
@@ -202,8 +202,8 @@ describe('ResidentService — updateResident', () => {
   it('writes an audit log with before/after snapshots', async () => {
     const { service, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
-    await service.updateResident(r.id!, { lastName: 'Smith' }, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
+    await service.updateResident(r.id!, { lastName: 'Smith' });
 
     const logs = await db.auditLogs
       .filter(l => l.action === 'RESIDENT_UPDATED' && Number(l.targetId) === r.id)
@@ -227,8 +227,8 @@ describe('ResidentService — getChangeLog', () => {
   it('returns audit entries for the resident sorted descending', async () => {
     const { service, db } = await setup();
 
-    const r = await service.createResident(BASE_DATA, 1, 'admin');
-    await service.updateResident(r.id!, { phone: '555-9999' }, 1, 'admin');
+    const r = await service.createResident(BASE_DATA);
+    await service.updateResident(r.id!, { phone: '555-9999' });
 
     const log = await service.getChangeLog(r.id!);
 
@@ -261,7 +261,7 @@ describe('ResidentService — searchResidents', () => {
   it('finds by partial phone number', async () => {
     const { service, db } = await setup();
 
-    await service.createResident({ ...BASE_DATA, phone: '555-1234', email: 'ph@hp.local' }, 1, 'admin');
+    await service.createResident({ ...BASE_DATA, phone: '555-1234', email: 'ph@hp.local' });
 
     const results = await service.searchResidents('1234');
     expect(results.some(r => r.phone.includes('1234'))).toBe(true);

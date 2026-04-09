@@ -80,11 +80,11 @@ describe('DocumentService — uploadDocument validation', () => {
   it('throws INVALID_FILE_TYPE for unsupported mime types', async () => {
     const { service, db } = await setup();
     const residentId = await seedResident(db);
-    const consentId = await service.grantConsent(residentId, 1, 'admin');
+    const consentId = await service.grantConsent(residentId);
     const file = makeFile('doc.txt', 'text/plain');
 
     await expect(
-      service.uploadDocument(residentId, file, consentId, 1, 'admin'),
+      service.uploadDocument(residentId, file, consentId),
     ).rejects.toThrow('INVALID_FILE_TYPE');
 
     await teardown(db);
@@ -93,11 +93,11 @@ describe('DocumentService — uploadDocument validation', () => {
   it('throws FILE_TOO_LARGE when file exceeds 10 MB', async () => {
     const { service, db } = await setup();
     const residentId = await seedResident(db);
-    const consentId = await service.grantConsent(residentId, 1, 'admin');
+    const consentId = await service.grantConsent(residentId);
     const file = makeFile('big.pdf', 'application/pdf', service.MAX_FILE_SIZE_BYTES + 1);
 
     await expect(
-      service.uploadDocument(residentId, file, consentId, 1, 'admin'),
+      service.uploadDocument(residentId, file, consentId),
     ).rejects.toThrow('FILE_TOO_LARGE');
 
     await teardown(db);
@@ -106,7 +106,7 @@ describe('DocumentService — uploadDocument validation', () => {
   it('throws MAX_FILES_REACHED when resident already has 5 documents', async () => {
     const { service, db } = await setup();
     const residentId = await seedResident(db);
-    const consentId = await service.grantConsent(residentId, 1, 'admin');
+    const consentId = await service.grantConsent(residentId);
 
     // Seed 5 docs directly
     for (let i = 0; i < service.MAX_FILES_PER_RESIDENT; i++) {
@@ -126,7 +126,7 @@ describe('DocumentService — uploadDocument validation', () => {
 
     const file = makeFile('extra.pdf', 'application/pdf');
     await expect(
-      service.uploadDocument(residentId, file, consentId, 1, 'admin'),
+      service.uploadDocument(residentId, file, consentId),
     ).rejects.toThrow('MAX_FILES_REACHED');
 
     await teardown(db);
@@ -143,7 +143,7 @@ describe('DocumentService — consent operations', () => {
     const { service, db } = await setup();
     const residentId = await seedResident(db);
 
-    const consentId = await service.grantConsent(residentId, 1, 'admin');
+    const consentId = await service.grantConsent(residentId);
 
     expect(consentId).toBeGreaterThan(0);
 
@@ -163,7 +163,7 @@ describe('DocumentService — consent operations', () => {
     const { service, db } = await setup();
     const residentId = await seedResident(db);
 
-    await service.grantConsent(residentId, 1, 'admin');
+    await service.grantConsent(residentId);
 
     const docId = await db.documents.add({
       residentId,
@@ -178,7 +178,7 @@ describe('DocumentService — consent operations', () => {
       createdAt:       new Date(),
     });
 
-    await service.revokeConsent(residentId, 1, 'admin');
+    await service.revokeConsent(residentId);
 
     const doc = await db.documents.get(docId);
     expect(doc!.hidden).toBe(true);
@@ -198,11 +198,11 @@ describe('DocumentService — consent operations', () => {
     expect(initial.granted).toBe(false);
     expect(initial.record).toBeUndefined();
 
-    await service.grantConsent(residentId, 1, 'admin');
+    await service.grantConsent(residentId);
     const granted = await service.getConsentStatus(residentId);
     expect(granted.granted).toBe(true);
 
-    await service.revokeConsent(residentId, 1, 'admin');
+    await service.revokeConsent(residentId);
     const revoked = await service.getConsentStatus(residentId);
     expect(revoked.granted).toBe(false);
 
@@ -222,16 +222,16 @@ describe('DocumentService — reviewDocument', () => {
     const auth = TestBed.inject(AuthService);
 
     const file = makeFile('lease.pdf', 'application/pdf');
-    const consentId = await service.grantConsent(residentId, 1, 'admin');
+    const consentId = await service.grantConsent(residentId);
 
-    const uploaded = await service.uploadDocument(residentId, file, consentId, 1, 'admin');
+    const uploaded = await service.uploadDocument(residentId, file, consentId);
 
     /* Switch to compliance role for review */
     await auth.selectRole('compliance', 'harborpoint2024');
-    const reviewed = await service.reviewDocument(uploaded.id!, 'approved', '', 3, 'compliance');
+    const reviewed = await service.reviewDocument(uploaded.id!, 'approved', '');
 
     expect(reviewed.status).toBe('approved');
-    expect(reviewed.reviewedBy).toBe(3);
+    expect(reviewed.reviewedBy).toBe(3); // compliance user ID from AuthService.USER_ID_MAP
     expect(reviewed.reviewedAt).toBeInstanceOf(Date);
 
     await teardown(db);
@@ -243,14 +243,14 @@ describe('DocumentService — reviewDocument', () => {
     const auth = TestBed.inject(AuthService);
 
     const file = makeFile('id.jpg', 'image/jpeg');
-    const consentId = await service.grantConsent(residentId, 1, 'admin');
+    const consentId = await service.grantConsent(residentId);
 
-    const uploaded = await service.uploadDocument(residentId, file, consentId, 1, 'admin');
+    const uploaded = await service.uploadDocument(residentId, file, consentId);
 
     /* Switch to compliance role for review */
     await auth.selectRole('compliance', 'harborpoint2024');
     const reviewed = await service.reviewDocument(
-      uploaded.id!, 'rejected', 'Document is unreadable.', 3, 'compliance',
+      uploaded.id!, 'rejected', 'Document is unreadable.',
     );
 
     expect(reviewed.status).toBe('rejected');

@@ -136,7 +136,7 @@ describe('F-BLK-02 — Search index from real CRUD', () => {
       phone: '555-9999',
       dateOfBirth: new Date('1990-01-01'),
       status: 'active',
-    }, 1, 'admin');
+    });
 
     // Wait for async indexing
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -160,7 +160,7 @@ describe('F-BLK-02 — Search index from real CRUD', () => {
       phone: '555-8888',
       dateOfBirth: new Date('1985-03-15'),
       status: 'active',
-    }, 1, 'admin');
+    });
 
     // Wait for async indexing
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -227,7 +227,7 @@ describe('F-HIGH-03 — Move-in requires explicit room selection', () => {
       firstName: 'MoveIn', lastName: 'Test',
       email: 'movein@hp.local', phone: '555-0000',
       dateOfBirth: new Date('1990-01-01'), status: 'active',
-    }, 1, 'admin');
+    });
 
     const rooms = await db.rooms.toArray();
     expect(rooms.length).toBeGreaterThan(0);
@@ -237,8 +237,6 @@ describe('F-HIGH-03 — Move-in requires explicit room selection', () => {
       roomId: rooms[0].id!,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.MOVE_IN_NEW,
-      actorId: 1,
-      actorRole: 'admin',
     })).resolves.toBeDefined();
 
     await teardown(db);

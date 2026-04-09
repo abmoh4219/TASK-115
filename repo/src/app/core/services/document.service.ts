@@ -103,11 +103,11 @@ export class DocumentService {
     residentId:      number,
     file:            File,
     consentRecordId: number,
-    actorId:         number,
-    actorRole:       string,
   ): Promise<HpDocument> {
 
-    this.requireRole('resident', 'admin');
+    this.requireSelfOrRole(residentId, 'admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
 
     // ── Consent validation ─────────────────────────
     const consentStatus = await this.getConsentStatus(residentId);
@@ -205,10 +205,10 @@ export class DocumentService {
     id:          number,
     decision:    'approved' | 'rejected',
     reviewNotes: string,
-    actorId:     number,
-    actorRole:   string,
   ): Promise<HpDocument> {
     this.requireRole('compliance', 'admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
     const before = await this.db.documents.get(id);
     if (!before) throw new Error('DOCUMENT_NOT_FOUND');
 
@@ -239,10 +239,10 @@ export class DocumentService {
 
   async grantConsent(
     residentId: number,
-    actorId:    number,
-    actorRole:  string,
   ): Promise<number> {
-    this.requireRole('resident', 'admin');
+    this.requireSelfOrRole(residentId, 'admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
     const consentId = await this.db.consentRecords.add({
       residentId,
       action:        'granted',
@@ -263,10 +263,10 @@ export class DocumentService {
 
   async revokeConsent(
     residentId: number,
-    actorId:    number,
-    actorRole:  string,
   ): Promise<void> {
-    this.requireRole('resident', 'admin');
+    this.requireSelfOrRole(residentId, 'admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
     const docs = await this.db.documents
       .where('residentId').equals(residentId)
       .toArray();

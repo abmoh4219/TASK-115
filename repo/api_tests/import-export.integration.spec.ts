@@ -69,7 +69,7 @@ describe('Import/Export Integration — round trip', () => {
     };
 
     const file = await createHpdFile(cryptoService, data, password);
-    const result = await service.importData(file, password, 1, 'admin', true);
+    const result = await service.importData(file, password, true);
 
     expect(result.success).toBe(true);
 
@@ -81,7 +81,7 @@ describe('Import/Export Integration — round trip', () => {
     const data = { buildings: [], units: [], rooms: [], residents: [] };
     const file = await createHpdFile(cryptoService, data, 'correct-password');
 
-    const result = await service.importData(file, 'wrong-password', 1, 'admin');
+    const result = await service.importData(file, 'wrong-password');
     expect(result.success).toBe(false);
     expect(result.reason).toBe('WRONG_PASSWORD');
   });
@@ -90,7 +90,7 @@ describe('Import/Export Integration — round trip', () => {
     const blob = new Blob(['not json at all'], { type: 'text/plain' });
     const file = new File([blob], 'bad.hpd');
 
-    const result = await service.importData(file, 'any', 1, 'admin');
+    const result = await service.importData(file, 'any');
     expect(result.success).toBe(false);
     // Could be INVALID_FILE_FORMAT or UNKNOWN_ERROR depending on parse
   });
@@ -101,7 +101,7 @@ describe('Import/Export Integration — round trip', () => {
     const data = { units: [], rooms: [], residents: [] };
     const file = await createHpdFile(cryptoService, data as any, password);
 
-    const result = await service.importData(file, password, 1, 'admin');
+    const result = await service.importData(file, password);
     expect(result.success).toBe(false);
     expect(result.reason).toBe('MISSING_KEY_BUILDINGS');
   });
@@ -152,7 +152,7 @@ describe('Import/Export Integration — duplicate modes', () => {
     };
     const file = await createHpdFile(cryptoService, data, password);
 
-    const result = await service.importData(file, password, 1, 'admin', true);
+    const result = await service.importData(file, password, true);
     expect(result.success).toBe(true);
 
     const buildings = await db.buildings.toArray();
@@ -173,7 +173,7 @@ describe('Import/Export Integration — duplicate modes', () => {
     };
     const file = await createHpdFile(cryptoService, data, password);
 
-    const result = await service.importData(file, password, 1, 'admin', false);
+    const result = await service.importData(file, password, false);
     expect(result.success).toBe(true);
 
     const buildings = await db.buildings.toArray();
@@ -221,7 +221,7 @@ describe('Import/Export Integration — prototype pollution guard', () => {
     };
     const file = await createHpdFile(cryptoService, data, password);
 
-    const result = await service.importData(file, password, 1, 'admin', true);
+    const result = await service.importData(file, password, true);
     expect(result.success).toBe(true);
 
     const buildings = await db.buildings.toArray();
@@ -268,11 +268,11 @@ describe('Import/Export Integration — audit trail', () => {
     const data = { buildings: [], units: [], rooms: [], residents: [] };
     const file = await createHpdFile(cryptoService, data, password);
 
-    await service.importData(file, password, 99, 'admin', false);
+    await service.importData(file, password, false);
     await new Promise(r => setTimeout(r, 300));
 
     const logs = await db.auditLogs.toArray();
-    const importLog = logs.find(l => l.action === 'DATA_IMPORTED' && l.actorId === 99);
+    const importLog = logs.find(l => l.action === 'DATA_IMPORTED');
     expect(importLog).toBeDefined();
   });
 });

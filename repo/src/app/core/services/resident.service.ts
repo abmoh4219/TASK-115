@@ -146,10 +146,10 @@ export class ResidentService {
 
   async createResident(
     data:      CreateResidentData,
-    actorId:   number,
-    actorRole: string,
   ): Promise<Resident> {
     this.requireRole('admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
     const now = new Date();
 
     // Generate a unique opaque identifier then encrypt with AES-GCM
@@ -205,10 +205,10 @@ export class ResidentService {
   async updateResident(
     id:        number,
     data:      UpdateResidentData,
-    actorId:   number,
-    actorRole: string,
   ): Promise<{ resident: Resident; warnings: string[] }> {
-    this.requireRole('admin', 'resident', 'compliance');
+    this.requireSelfOrRole(id, 'admin', 'compliance');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
     const before = await this.db.residents.get(id);
     if (!before) throw new Error('RESIDENT_NOT_FOUND');
 

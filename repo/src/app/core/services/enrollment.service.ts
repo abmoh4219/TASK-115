@@ -114,8 +114,19 @@ export class EnrollmentService {
   // Enroll or Waitlist
   // --------------------------------------------------
 
-  async enroll(residentId: number, roundId: number, actorRole: string): Promise<EnrollmentResult> {
-    this.requireRole('resident', 'admin');
+  private requireSelfOrRole(resourceOwnerId: number, ...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!current) throw new Error('Unauthorized: not authenticated');
+    if (allowedRoles.includes(current)) return;
+    if (current === 'resident' && currentUserId === resourceOwnerId) return;
+    throw new Error('Unauthorized: insufficient permissions');
+  }
+
+  async enroll(residentId: number, roundId: number): Promise<EnrollmentResult> {
+    this.requireSelfOrRole(residentId, 'admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
     const round = await this.db.courseRounds.get(roundId);
     if (!round) return { success: false, reason: 'ROUND_NOT_FOUND' };
     if (round.status !== 'open') return { success: false, reason: 'ROUND_NOT_OPEN' };
@@ -143,7 +154,7 @@ export class EnrollmentService {
     const historyEntry: EnrollmentHistory = {
       status:    'enrolled',
       changedAt: now,
-      changedBy: residentId,
+      changedBy: actorId,
     };
 
     if (round.enrolled.length < round.capacity) {
@@ -163,7 +174,7 @@ export class EnrollmentService {
 
       const enrollment = await this.db.enrollments.get(id);
 
-      this.audit.log(AuditAction.ENROLLMENT_CREATED, residentId, actorRole, 'enrollment', id);
+      this.audit.log(AuditAction.ENROLLMENT_CREATED, actorId, actorRole, 'enrollment', id);
 
       return { success: true, status: 'enrolled', enrollment: enrollment! };
     }
@@ -186,7 +197,7 @@ export class EnrollmentService {
 
       const enrollment = await this.db.enrollments.get(id);
 
-      this.audit.log(AuditAction.WAITLIST_ADDED, residentId, actorRole, 'enrollment', id);
+      this.audit.log(AuditAction.WAITLIST_ADDED, actorId, actorRole, 'enrollment', id);
 
       return { success: true, status: 'waitlisted', enrollment: enrollment! };
     }
@@ -198,11 +209,15 @@ export class EnrollmentService {
   // Drop Enrollment
   // --------------------------------------------------
 
-  async drop(enrollmentId: number, actorId: number, actorRole: string, reasonCode: string): Promise<{ success: boolean; reason?: string }> {
-    this.requireRole('resident', 'admin');
+  async drop(enrollmentId: number, reasonCode: string): Promise<{ success: boolean; reason?: string }> {
     const enrollment = await this.db.enrollments.get(enrollmentId);
     if (!enrollment) return { success: false, reason: 'NOT_FOUND' };
     if (enrollment.status === 'dropped') return { success: false, reason: 'ALREADY_DROPPED' };
+
+    // Ownership: residents can only drop their own enrollments
+    this.requireSelfOrRole(enrollment.residentId, 'admin');
+    const actorId   = this.authService.getCurrentUserId() ?? 0;
+    const actorRole = this.authService.getCurrentRole() ?? 'unknown';
 
     const round = await this.db.courseRounds.get(enrollment.roundId);
     if (!round) return { success: false, reason: 'ROUND_NOT_FOUND' };
@@ -232,7 +247,7 @@ export class EnrollmentService {
       await this.db.courseRounds.update(enrollment.roundId, {
         enrolled: round.enrolled.filter(id => id !== enrollment.residentId),
       });
-      await this.backfillFromWaitlist(enrollment.roundId, actorRole);
+      await this.backfillFromWaitlist(enrollment.roundId);
     } else {
       await this.db.courseRounds.update(enrollment.roundId, {
         waitlisted: round.waitlisted.filter(id => id !== enrollment.residentId),
@@ -248,7 +263,7 @@ export class EnrollmentService {
   // Waitlist Backfill — FIFO / deterministic
   // --------------------------------------------------
 
-  private async backfillFromWaitlist(roundId: number, actorRole: string): Promise<void> {
+  private async backfillFromWaitlist(roundId: number): Promise<void> {
     const round = await this.db.courseRounds.get(roundId);
     if (!round || round.waitlisted.length === 0) return;
     if (round.enrolled.length >= round.capacity) return;
@@ -277,7 +292,9 @@ export class EnrollmentService {
         status:          'enrolled',
         historySnapshot: [...enrollment.historySnapshot, historyEntry],
       });
-      this.audit.log(AuditAction.WAITLIST_PROMOTED, nextResidentId, actorRole, 'enrollment', enrollment.id);
+      const promoActorId   = this.authService.getCurrentUserId() ?? 0;
+      const promoActorRole = this.authService.getCurrentRole() ?? 'system';
+      this.audit.log(AuditAction.WAITLIST_PROMOTED, promoActorId, promoActorRole, 'enrollment', enrollment.id);
     }
   }
 

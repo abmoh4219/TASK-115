@@ -45,8 +45,16 @@ export class PropertyService {
     return this.db.buildings.get(id);
   }
 
-  async createBuilding(data: Omit<Building, 'id' | 'createdAt' | 'updatedAt'>, actorId: number, actorRole: string): Promise<Building> {
+  private getActor(): { actorId: number; actorRole: string } {
+    return {
+      actorId:   this.authService.getCurrentUserId() ?? 0,
+      actorRole: this.authService.getCurrentRole() ?? 'unknown',
+    };
+  }
+
+  async createBuilding(data: Omit<Building, 'id' | 'createdAt' | 'updatedAt'>): Promise<Building> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const now = new Date();
     const id = await this.db.buildings.add({
       ...data,
@@ -60,8 +68,9 @@ export class PropertyService {
     return building!;
   }
 
-  async updateBuilding(id: number, data: Partial<Building>, actorId: number, actorRole: string): Promise<void> {
+  async updateBuilding(id: number, data: Partial<Building>): Promise<void> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const before = await this.db.buildings.get(id);
     await this.db.buildings.update(id, { ...data, updatedAt: new Date() });
     const after = await this.db.buildings.get(id);
@@ -79,8 +88,9 @@ export class PropertyService {
     return this.db.units.toArray();
   }
 
-  async createUnit(data: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'>, actorId: number, actorRole: string): Promise<Unit> {
+  async createUnit(data: Omit<Unit, 'id' | 'createdAt' | 'updatedAt'>): Promise<Unit> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const now = new Date();
     const id = await this.db.units.add({ ...data, createdAt: now, updatedAt: now });
     const unit = await this.db.units.get(id);
@@ -88,8 +98,9 @@ export class PropertyService {
     return unit!;
   }
 
-  async updateUnit(id: number, data: Partial<Unit>, actorId: number, actorRole: string): Promise<void> {
+  async updateUnit(id: number, data: Partial<Unit>): Promise<void> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const before = await this.db.units.get(id);
     await this.db.units.update(id, { ...data, updatedAt: new Date() });
     const after = await this.db.units.get(id);
@@ -107,8 +118,9 @@ export class PropertyService {
     return this.db.rooms.toArray();
   }
 
-  async createRoom(data: Omit<Room, 'id' | 'createdAt' | 'updatedAt'>, actorId: number, actorRole: string): Promise<Room> {
+  async createRoom(data: Omit<Room, 'id' | 'createdAt' | 'updatedAt'>): Promise<Room> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const now = new Date();
     const id = await this.db.rooms.add({ ...data, createdAt: now, updatedAt: now });
     const room = await this.db.rooms.get(id);
@@ -116,8 +128,9 @@ export class PropertyService {
     return room!;
   }
 
-  async updateRoom(id: number, data: Partial<Room>, actorId: number, actorRole: string): Promise<void> {
+  async updateRoom(id: number, data: Partial<Room>): Promise<void> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const before = await this.db.rooms.get(id);
     await this.db.rooms.update(id, { ...data, updatedAt: new Date() });
     const after = await this.db.rooms.get(id);
@@ -134,10 +147,9 @@ export class PropertyService {
     roomId: number;
     effectiveFrom: Date;
     reasonCode: MoveReasonCode;
-    actorId: number;
-    actorRole: string;
   }): Promise<Occupancy> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     // Enforce: one active occupancy per resident
     const existing = await this.db.occupancies
       .filter(o => o.residentId === params.residentId && o.status === 'active')
@@ -160,8 +172,8 @@ export class PropertyService {
 
     this.audit.log(
       AuditAction.MOVE_IN,
-      params.actorId,
-      params.actorRole,
+      actorId,
+      actorRole,
       'occupancy',
       id,
       undefined,
@@ -179,10 +191,9 @@ export class PropertyService {
     residentId: number;
     effectiveTo: Date;
     reasonCode: MoveReasonCode;
-    actorId: number;
-    actorRole: string;
   }): Promise<void> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const active = await this.db.occupancies
       .filter(o => o.residentId === params.residentId && o.status === 'active')
       .first();
@@ -199,8 +210,8 @@ export class PropertyService {
 
     this.audit.log(
       AuditAction.MOVE_OUT,
-      params.actorId,
-      params.actorRole,
+      actorId,
+      actorRole,
       'occupancy',
       active.id,
       before,

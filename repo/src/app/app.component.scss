@@ -1,0 +1,163 @@
+    /* App shell layout */
+    .app-shell {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--hp-sidebar-w);
+      min-width: var(--hp-sidebar-w);
+      background: var(--hp-navy);
+      color: var(--hp-white);
+      display: flex;
+      flex-direction: column;
+      transition: width 200ms, min-width 200ms;
+      overflow: hidden;
+      z-index: 100;
+    }
+    .sidebar--collapsed {
+      width: 64px;
+      min-width: 64px;
+    }
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+    .sidebar-logo {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .sidebar-name {
+      font-size: 1.125rem;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: -0.025em;
+      color: var(--hp-white);
+    }
+
+    /* Nav */
+    .sidebar-nav {
+      flex: 1;
+      padding: 1rem 0;
+      overflow-y: auto;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+      padding: 0.75rem 1rem;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: background 150ms, color 150ms;
+      white-space: nowrap;
+      position: relative;
+    }
+    .nav-link:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--hp-white);
+    }
+    .nav-link.active {
+      background: rgba(45,212,191,0.15);
+      color: var(--hp-teal);
+      border-right: 3px solid var(--hp-teal);
+    }
+    .nav-icon { font-size: 1.25rem; width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+    .nav-label { flex: 1; }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .collapse-btn { color: rgba(255,255,255,0.6) !important; flex-shrink: 0; }
+    .lock-btn { color: rgba(255,255,255,0.6) !important; flex-shrink: 0; margin-left: auto; }
+    .role-badge {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      overflow: hidden;
+    }
+    .role-badge__label { font-size: 0.65rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.05em; }
+    .role-badge__role  { font-size: 0.8rem; color: var(--hp-teal); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Main area */
+    .app-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* Top bar */
+    .topbar {
+      height: var(--hp-topbar-h);
+      min-height: var(--hp-topbar-h);
+      background: var(--hp-white);
+      border-bottom: 1px solid var(--hp-border);
+      display: flex;
+      align-items: center;
+      padding: 0 1.5rem;
+      gap: 1rem;
+      box-shadow: var(--hp-shadow);
+      z-index: 50;
+    }
+    .topbar-title {
+      flex: 1;
+      margin: 0;
+      font-size: 1.125rem;
+      color: var(--hp-navy);
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .topbar-role {
+      font-size: 0.75rem;
+    }
+
+    /* Content */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--hp-bg);
+    }
+    /* Smooth page transition */
+    :host ::ng-deep router-outlet + * {
+      animation: pageFade 150ms ease-out;
+    }
+    @keyframes pageFade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── Re-auth modal body ────────────────────── */
+    .reauth-body {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; gap: 0.75rem; padding: 0.5rem 0;
+    }
+    .reauth-icon-wrap {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(245,158,11,0.12);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .reauth-shield { color: #F59E0B; font-size: 28px; width: 28px; height: 28px; }
+    .reauth-message { margin: 0; color: #475569; font-size: 0.9rem; max-width: 320px; }
+    .reauth-attempts { margin: 0; font-size: 0.8rem; color: #EF4444; font-weight: 600; }
+    .reauth-field { width: 100%; max-width: 320px; }
+    .reauth-error { margin: 0; font-size: 0.8rem; color: #EF4444; }
+  

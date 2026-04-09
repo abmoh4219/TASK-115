@@ -76,16 +76,16 @@ describe('Document Integration — upload lifecycle', () => {
   beforeEach(async () => {
     ({ docService, db } = await setup());
     const residentService = TestBed.inject(ResidentService);
-    const resident = await residentService.createResident(BASE_RESIDENT, 1, 'admin');
+    const resident = await residentService.createResident(BASE_RESIDENT);
     residentId = resident.id!;
-    consentId = await docService.grantConsent(residentId, 2, 'resident');
+    consentId = await docService.grantConsent(residentId);
   });
 
   afterEach(async () => teardown(db));
 
   it('uploads a PDF and returns a document with pending_review status', async () => {
     const file = makeFile('lease.pdf', 'application/pdf');
-    const doc  = await docService.uploadDocument(residentId, file, consentId, 2, 'resident');
+    const doc  = await docService.uploadDocument(residentId, file, consentId);
 
     expect(doc.id).toBeDefined();
     expect(doc.status).toBe('pending_review');
@@ -98,7 +98,7 @@ describe('Document Integration — upload lifecycle', () => {
 
   it('stores fileHash in encrypted ciphertext.iv format', async () => {
     const file = makeFile('id.jpg', 'image/jpeg');
-    const doc  = await docService.uploadDocument(residentId, file, consentId, 2, 'resident');
+    const doc  = await docService.uploadDocument(residentId, file, consentId);
 
     // fileHash must be stored encrypted: base64.base64
     expect(doc.fileHash).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
@@ -106,7 +106,7 @@ describe('Document Integration — upload lifecycle', () => {
 
   it('writes a DOCUMENT_UPLOADED audit entry with fileHash masked', async () => {
     const file = makeFile('photo.png', 'image/png');
-    const doc  = await docService.uploadDocument(residentId, file, consentId, 2, 'resident');
+    const doc  = await docService.uploadDocument(residentId, file, consentId);
 
     const logs = await db.auditLogs
       .filter(l => l.action === 'DOCUMENT_UPLOADED' && Number(l.targetId) === doc.id)
@@ -119,9 +119,9 @@ describe('Document Integration — upload lifecycle', () => {
   });
 
   it('getDocuments returns docs sorted descending by createdAt', async () => {
-    await docService.uploadDocument(residentId, makeFile('a.pdf', 'application/pdf'), consentId, 2, 'resident');
+    await docService.uploadDocument(residentId, makeFile('a.pdf', 'application/pdf'), consentId);
     await new Promise(r => setTimeout(r, 5));
-    await docService.uploadDocument(residentId, makeFile('b.jpg', 'image/jpeg'), consentId, 2, 'resident');
+    await docService.uploadDocument(residentId, makeFile('b.jpg', 'image/jpeg'), consentId);
 
     const docs = await docService.getDocuments(residentId);
     expect(docs.length).toBeGreaterThanOrEqual(2);
@@ -141,7 +141,7 @@ describe('Document Integration — consent gate', () => {
   beforeEach(async () => {
     ({ docService, db } = await setup());
     const residentService = TestBed.inject(ResidentService);
-    const resident = await residentService.createResident(BASE_RESIDENT, 1, 'admin');
+    const resident = await residentService.createResident(BASE_RESIDENT);
     residentId = resident.id!;
   });
 
@@ -154,9 +154,9 @@ describe('Document Integration — consent gate', () => {
   });
 
   it('grantConsent and revokeConsent produce correct consent history', async () => {
-    await docService.grantConsent(residentId, 2, 'resident');
-    await docService.revokeConsent(residentId, 2, 'resident');
-    await docService.grantConsent(residentId, 2, 'resident');
+    await docService.grantConsent(residentId);
+    await docService.revokeConsent(residentId);
+    await docService.grantConsent(residentId);
 
     const records = await db.consentRecords
       .where('residentId').equals(residentId)
@@ -185,18 +185,20 @@ describe('Document Integration — compliance review', () => {
   beforeEach(async () => {
     ({ docService, db } = await setup());
     const residentService = TestBed.inject(ResidentService);
-    const resident = await residentService.createResident(BASE_RESIDENT, 1, 'admin');
+    const resident = await residentService.createResident(BASE_RESIDENT);
     residentId = resident.id!;
-    consentId = await docService.grantConsent(residentId, 2, 'resident');
+    consentId = await docService.grantConsent(residentId);
   });
 
   afterEach(async () => teardown(db));
 
   it('approve: status → approved, audit action = DOCUMENT_APPROVED', async () => {
     const uploaded = await docService.uploadDocument(
-      residentId, makeFile('lease.pdf', 'application/pdf'), consentId, 2, 'resident',
+      residentId, makeFile('lease.pdf', 'application/pdf'), consentId,
     );
-    const reviewed = await docService.reviewDocument(uploaded.id!, 'approved', '', 3, 'compliance');
+    // Switch to compliance role for review (actorId=3)
+    await TestBed.inject(AuthService).selectRole('compliance', 'harborpoint2024');
+    const reviewed = await docService.reviewDocument(uploaded.id!, 'approved', '');
 
     expect(reviewed.status).toBe('approved');
     expect(reviewed.reviewedBy).toBe(3);
@@ -209,10 +211,12 @@ describe('Document Integration — compliance review', () => {
 
   it('reject: status → rejected with notes, audit action = DOCUMENT_REJECTED', async () => {
     const uploaded = await docService.uploadDocument(
-      residentId, makeFile('id.jpg', 'image/jpeg'), consentId, 2, 'resident',
+      residentId, makeFile('id.jpg', 'image/jpeg'), consentId,
     );
+    // Switch to compliance role for review
+    await TestBed.inject(AuthService).selectRole('compliance', 'harborpoint2024');
     const reviewed = await docService.reviewDocument(
-      uploaded.id!, 'rejected', 'Image too blurry to verify.', 3, 'compliance',
+      uploaded.id!, 'rejected', 'Image too blurry to verify.',
     );
 
     expect(reviewed.status).toBe('rejected');
@@ -230,13 +234,13 @@ describe('Document Integration — compliance review', () => {
 
   it('getPendingReview excludes hidden docs and approved/rejected docs', async () => {
     const d1 = await docService.uploadDocument(
-      residentId, makeFile('a.pdf', 'application/pdf'), consentId, 2, 'resident',
+      residentId, makeFile('a.pdf', 'application/pdf'), consentId,
     );
     const d2 = await docService.uploadDocument(
-      residentId, makeFile('b.jpg', 'image/jpeg'), consentId, 2, 'resident',
+      residentId, makeFile('b.jpg', 'image/jpeg'), consentId,
     );
 
-    await docService.reviewDocument(d1.id!, 'approved', '', 3, 'compliance');
+    await docService.reviewDocument(d1.id!, 'approved', '');
     await db.documents.update(d2.id!, { hidden: true });
 
     const pending = await docService.getPendingReview();
@@ -259,22 +263,22 @@ describe('Document Integration — consent revocation', () => {
   beforeEach(async () => {
     ({ docService, db } = await setup());
     const residentService = TestBed.inject(ResidentService);
-    const resident = await residentService.createResident(BASE_RESIDENT, 1, 'admin');
+    const resident = await residentService.createResident(BASE_RESIDENT);
     residentId = resident.id!;
-    consentId = await docService.grantConsent(residentId, 2, 'resident');
+    consentId = await docService.grantConsent(residentId);
   });
 
   afterEach(async () => teardown(db));
 
   it('revokeConsent hides all non-hidden documents for the resident', async () => {
     await docService.uploadDocument(
-      residentId, makeFile('a.pdf', 'application/pdf'), consentId, 2, 'resident',
+      residentId, makeFile('a.pdf', 'application/pdf'), consentId,
     );
     await docService.uploadDocument(
-      residentId, makeFile('b.jpg', 'image/jpeg'), consentId, 2, 'resident',
+      residentId, makeFile('b.jpg', 'image/jpeg'), consentId,
     );
 
-    await docService.revokeConsent(residentId, 2, 'resident');
+    await docService.revokeConsent(residentId);
 
     const docs = await docService.getDocuments(residentId);
     for (const doc of docs) {
@@ -285,10 +289,10 @@ describe('Document Integration — consent revocation', () => {
 
   it('revokeConsent writes CONSENT_REVOKED + DOCUMENT_HIDDEN audit entries', async () => {
     await docService.uploadDocument(
-      residentId, makeFile('id.jpg', 'image/jpeg'), consentId, 2, 'resident',
+      residentId, makeFile('id.jpg', 'image/jpeg'), consentId,
     );
 
-    await docService.revokeConsent(residentId, 2, 'resident');
+    await docService.revokeConsent(residentId);
 
     const consentLog = await db.auditLogs
       .filter(l => l.action === 'CONSENT_REVOKED' && Number(l.targetId) === residentId)
@@ -303,7 +307,7 @@ describe('Document Integration — consent revocation', () => {
 
   it('already-hidden documents are not double-hidden by revoke', async () => {
     const doc = await docService.uploadDocument(
-      residentId, makeFile('c.png', 'image/png'), consentId, 2, 'resident',
+      residentId, makeFile('c.png', 'image/png'), consentId,
     );
     await db.documents.update(doc.id!, { hidden: true });
 
@@ -311,7 +315,7 @@ describe('Document Integration — consent revocation', () => {
       .filter(l => l.action === 'DOCUMENT_HIDDEN')
       .toArray()).length;
 
-    await docService.revokeConsent(residentId, 2, 'resident');
+    await docService.revokeConsent(residentId);
 
     const hiddenCountAfter = (await db.auditLogs
       .filter(l => l.action === 'DOCUMENT_HIDDEN')

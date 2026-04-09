@@ -30,8 +30,16 @@ export class ImportExportService {
   // Export — encrypt full dataset as .hpd file
   // --------------------------------------------------
 
-  async exportData(password: string, actorId: number, actorRole: string): Promise<void> {
+  private getActor(): { actorId: number; actorRole: string } {
+    return {
+      actorId:   this.authService.getCurrentUserId() ?? 0,
+      actorRole: this.authService.getCurrentRole() ?? 'unknown',
+    };
+  }
+
+  async exportData(password: string): Promise<void> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     const snapshot = await this.db.exportAll();
     const json = JSON.stringify(snapshot);
 
@@ -52,11 +60,10 @@ export class ImportExportService {
   async importData(
     file: File,
     password: string,
-    actorId: number,
-    actorRole: string,
     overwrite = false,
   ): Promise<{ success: boolean; reason?: string }> {
     this.requireRole('admin');
+    const { actorId, actorRole } = this.getActor();
     try {
       const text = await file.text();
       const payload = JSON.parse(text);

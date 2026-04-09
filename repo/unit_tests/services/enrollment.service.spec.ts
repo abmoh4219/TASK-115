@@ -261,7 +261,7 @@ describe('EnrollmentService — getEnrollmentHistory', () => {
     });
     const roundId = await addOpenRound(db, courseId, { dropCutoffPast: false });
 
-    const enroll = await service.enroll(residentId, roundId, 'resident');
+    const enroll = await service.enroll(residentId, roundId);
     expect(enroll.success).toBe(true);
 
     if (enroll.success) {
@@ -303,11 +303,11 @@ describe('EnrollmentService ��� duplicate enrollment rejection', () => {
     const roundId = await addOpenRound(db, courseId);
 
     // First enroll succeeds
-    const first = await service.enroll(residentId, roundId, 'resident');
+    const first = await service.enroll(residentId, roundId);
     expect(first.success).toBe(true);
 
     // Subsequent calls for same resident+round are rejected
-    const second = await service.enroll(residentId, roundId, 'resident');
+    const second = await service.enroll(residentId, roundId);
     expect(second.success).toBe(false);
     if (!second.success) {
       expect(second.reason).toBe('ALREADY_ENROLLED');

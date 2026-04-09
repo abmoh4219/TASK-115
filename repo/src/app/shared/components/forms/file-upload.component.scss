@@ -1,0 +1,58 @@
+    :host { display: block; }
+
+    .hp-file-zone {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 150ms, background 150ms;
+      user-select: none;
+
+      &:hover, &--dragover {
+        border-color: #2dd4bf;
+        background: rgba(45, 212, 191, 0.04);
+      }
+
+      &--error { border-color: #ef4444; }
+
+      &__input { display: none; }
+      &__icon { font-size: 2.5rem; width: 2.5rem; height: 2.5rem; color: #9ca3af; margin-bottom: 0.5rem; }
+      &__primary { font-size: 0.875rem; color: #374151; margin: 0 0 0.25rem; }
+      &__hint { font-size: 0.75rem; color: #9ca3af; margin: 0; }
+    }
+
+    .hp-file-list {
+      list-style: none; margin: 0.75rem 0 0; padding: 0;
+      display: flex; flex-direction: column; gap: 0.375rem;
+    }
+
+    .hp-file-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb;
+      border-radius: 6px; background: #f9fafb;
+
+      &__icon { font-size: 1.25rem; width: 1.25rem; height: 1.25rem; color: #1e3a5f; flex-shrink: 0; }
+      &__info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+      &__name { font-size: 0.8125rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      &__size { font-size: 0.75rem; color: #9ca3af; }
+      &__remove {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border: none; background: transparent;
+        border-radius: 4px; cursor: pointer; color: #9ca3af; flex-shrink: 0;
+        mat-icon { font-size: 1rem; width: 1rem; height: 1rem; }
+        &:hover { background: #fee2e2; color: #ef4444; }
+      }
+    }
+
+    .hp-file-errors {
+      list-style: none; margin: 0.5rem 0 0; padding: 0;
+      display: flex; flex-direction: column; gap: 0.25rem;
+    }
+
+    .hp-file-error {
+      display: flex; align-items: center; gap: 0.375rem;
+      font-size: 0.75rem; color: #ef4444;
+      mat-icon { font-size: 0.875rem; width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
+    }
+  

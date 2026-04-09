@@ -34,7 +34,6 @@ describe('Property Integration — CRUD', () => {
   it('creates a building and retrieves it', async () => {
     const building = await propertyService.createBuilding(
       { name: 'Test Tower', address: '123 Test St', floors: 5 },
-      1, 'admin',
     );
     expect(building.id).toBeDefined();
     expect(building.name).toBe('Test Tower');
@@ -50,7 +49,6 @@ describe('Property Integration — CRUD', () => {
     const buildingId = buildings[0].id!;
     const unit = await propertyService.createUnit(
       { buildingId, unitNumber: 'T01', floor: 1, type: '1BR' },
-      1, 'admin',
     );
     expect(unit.buildingId).toBe(buildingId);
     expect(unit.unitNumber).toBe('T01');
@@ -61,7 +59,6 @@ describe('Property Integration — CRUD', () => {
     const unitId = units[0].id!;
     const room = await propertyService.createRoom(
       { unitId, roomNumber: 'T01A', capacity: 2 },
-      1, 'admin',
     );
     expect(room.unitId).toBe(unitId);
     expect(room.roomNumber).toBe('T01A');
@@ -116,8 +113,6 @@ describe('Property Integration — Occupancy rules', () => {
       roomId: ROOM_ID,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.MOVE_IN_NEW,
-      actorId: 1,
-      actorRole: 'admin',
     });
     expect(occupancy.status).toBe('active');
     expect(occupancy.reasonCode).toBe(ReasonCode.MOVE_IN_NEW);
@@ -130,8 +125,6 @@ describe('Property Integration — Occupancy rules', () => {
       roomId: ROOM_ID,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.MOVE_IN_NEW,
-      actorId: 1,
-      actorRole: 'admin',
     });
 
     await expect(propertyService.moveIn({
@@ -139,8 +132,6 @@ describe('Property Integration — Occupancy rules', () => {
       roomId: ROOM_ID,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.TRANSFER,
-      actorId: 1,
-      actorRole: 'admin',
     })).rejects.toThrow('RESIDENT_ALREADY_HAS_ACTIVE_OCCUPANCY');
   });
 
@@ -151,16 +142,12 @@ describe('Property Integration — Occupancy rules', () => {
       roomId: ROOM_ID,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.LEASE_START,
-      actorId: 1,
-      actorRole: 'admin',
     });
 
     await expect(propertyService.moveOut({
       residentId: RID,
       effectiveTo: new Date(),
       reasonCode: ReasonCode.MOVE_OUT_VOLUNTARY,
-      actorId: 1,
-      actorRole: 'admin',
     })).resolves.not.toThrow();
   });
 
@@ -169,8 +156,6 @@ describe('Property Integration — Occupancy rules', () => {
       residentId: 888888,
       effectiveTo: new Date(),
       reasonCode: ReasonCode.LEASE_END,
-      actorId: 1,
-      actorRole: 'admin',
     })).rejects.toThrow('NO_ACTIVE_OCCUPANCY');
   });
 
@@ -181,15 +166,11 @@ describe('Property Integration — Occupancy rules', () => {
       roomId: ROOM_ID,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.MOVE_IN_NEW,
-      actorId: 1,
-      actorRole: 'admin',
     });
     await propertyService.moveOut({
       residentId: RID,
       effectiveTo: new Date(),
       reasonCode: ReasonCode.LEASE_END,
-      actorId: 1,
-      actorRole: 'admin',
     });
     const active = await propertyService.getActiveOccupancy(RID);
     expect(active).toBeUndefined();
@@ -202,11 +183,11 @@ describe('Property Integration — Occupancy rules', () => {
 
     await propertyService.moveIn({
       residentId: RID, roomId: ROOM_ID, effectiveFrom: start,
-      reasonCode: ReasonCode.LEASE_START, actorId: 1, actorRole: 'admin',
+      reasonCode: ReasonCode.LEASE_START,
     });
     await propertyService.moveOut({
       residentId: RID, effectiveTo: end,
-      reasonCode: ReasonCode.LEASE_END, actorId: 1, actorRole: 'admin',
+      reasonCode: ReasonCode.LEASE_END,
     });
 
     const history = await propertyService.getOccupancyHistory(RID);
@@ -250,7 +231,7 @@ describe('Property Integration — getRoomOccupants', () => {
 
     await propertyService.moveIn({
       residentId, roomId, effectiveFrom: new Date(),
-      reasonCode: ReasonCode.MOVE_IN_NEW, actorId: 1, actorRole: 'admin',
+      reasonCode: ReasonCode.MOVE_IN_NEW,
     });
 
     const occupants = await propertyService.getRoomOccupants(roomId);
@@ -274,11 +255,11 @@ describe('Property Integration — getRoomOccupants', () => {
 
     await propertyService.moveIn({
       residentId, roomId, effectiveFrom: new Date(),
-      reasonCode: ReasonCode.MOVE_IN_NEW, actorId: 1, actorRole: 'admin',
+      reasonCode: ReasonCode.MOVE_IN_NEW,
     });
     await propertyService.moveOut({
       residentId, effectiveTo: new Date(),
-      reasonCode: ReasonCode.MOVE_OUT_VOLUNTARY, actorId: 1, actorRole: 'admin',
+      reasonCode: ReasonCode.MOVE_OUT_VOLUNTARY,
     });
 
     const occupants = await propertyService.getRoomOccupants(roomId);

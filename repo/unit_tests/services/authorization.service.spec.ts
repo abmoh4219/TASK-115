@@ -55,7 +55,7 @@ describe('Service-layer authorization — unauthorized rejections', () => {
     await auth.selectRole('resident', 'harborpoint2024');
 
     await expect(
-      property.createBuilding({ name: 'X', address: 'x', floors: 1 }, 2, 'resident'),
+      property.createBuilding({ name: 'X', address: 'x', floors: 1 }),
     ).rejects.toThrow('Unauthorized');
 
     teardown();
@@ -66,7 +66,7 @@ describe('Service-layer authorization — unauthorized rejections', () => {
     await auth.selectRole('analyst', 'harborpoint2024');
 
     await expect(
-      property.moveIn({ residentId: 1, roomId: 1, effectiveFrom: new Date(), reasonCode: 'MOVE_IN_NEW', actorId: 4, actorRole: 'analyst' }),
+      property.moveIn({ residentId: 1, roomId: 1, effectiveFrom: new Date(), reasonCode: 'MOVE_IN_NEW' }),
     ).rejects.toThrow('Unauthorized');
 
     teardown();
@@ -77,7 +77,7 @@ describe('Service-layer authorization — unauthorized rejections', () => {
     await auth.selectRole('resident', 'harborpoint2024');
 
     await expect(
-      docSvc.reviewDocument(1, 'approved', 'ok', 2, 'resident'),
+      docSvc.reviewDocument(1, 'approved', 'ok'),
     ).rejects.toThrow('Unauthorized');
 
     teardown();
@@ -89,7 +89,7 @@ describe('Service-layer authorization — unauthorized rejections', () => {
 
     const fakeFile = new File(['test'], 'test.pdf', { type: 'application/pdf' });
     await expect(
-      docSvc.uploadDocument(1, fakeFile, 1, 4, 'analyst'),
+      docSvc.uploadDocument(1, fakeFile, 1),
     ).rejects.toThrow('Unauthorized');
 
     teardown();
@@ -111,7 +111,7 @@ describe('Service-layer authorization — unauthorized rejections', () => {
     await auth.selectRole('analyst', 'harborpoint2024');
 
     await expect(
-      enrollment.enroll(1, 1, 'analyst'),
+      enrollment.enroll(1, 1),
     ).rejects.toThrow('Unauthorized');
 
     teardown();
@@ -133,7 +133,7 @@ describe('Service-layer authorization — unauthorized rejections', () => {
     await auth.selectRole('resident', 'harborpoint2024');
 
     await expect(
-      importExport.exportData('pass', 2, 'resident'),
+      importExport.exportData('pass'),
     ).rejects.toThrow('Unauthorized');
 
     teardown();
@@ -152,7 +152,7 @@ describe('Service-layer authorization — authorized happy paths', () => {
     await auth.selectRole('admin', 'harborpoint2024');
 
     const building = await property.createBuilding(
-      { name: 'Auth Test', address: '1 Main', floors: 2 }, 1, 'admin',
+      { name: 'Auth Test', address: '1 Main', floors: 2 },
     );
     expect(building.name).toBe('Auth Test');
 
@@ -167,7 +167,7 @@ describe('Service-layer authorization — authorized happy paths', () => {
 
     // Method should pass auth check and fail on business logic (not found)
     await expect(
-      docSvc.reviewDocument(99999, 'approved', 'looks good', 3, 'compliance'),
+      docSvc.reviewDocument(99999, 'approved', 'looks good'),
     ).rejects.toThrow('DOCUMENT_NOT_FOUND');
 
     await db.close();
@@ -261,7 +261,7 @@ describe('Service-layer authorization — consent enforcement', () => {
 
     const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
     await expect(
-      docSvc.uploadDocument(residentId, file, 999, 1, 'admin'),
+      docSvc.uploadDocument(residentId, file, 999),
     ).rejects.toThrow(/consent/i);
 
     await db.close();
@@ -285,14 +285,14 @@ describe('Service-layer authorization — consent enforcement', () => {
     });
 
     // Grant consent for r1 only
-    const consentId = await docSvc.grantConsent(r1, 1, 'admin');
+    const consentId = await docSvc.grantConsent(r1);
     // Also grant for r2 so the consent status check passes
-    await docSvc.grantConsent(r2, 1, 'admin');
+    await docSvc.grantConsent(r2);
 
     const file = new File(['test'], 'test.pdf', { type: 'application/pdf' });
     // Use r1's consentId but upload for r2 — should fail
     await expect(
-      docSvc.uploadDocument(r2, file, consentId, 1, 'admin'),
+      docSvc.uploadDocument(r2, file, consentId),
     ).rejects.toThrow(/consent record/i);
 
     await db.close();

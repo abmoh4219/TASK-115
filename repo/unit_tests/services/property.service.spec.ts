@@ -43,7 +43,6 @@ describe('PropertyService — createBuilding', () => {
 
     const building = await service.createBuilding(
       { name: 'Ocean View', address: '99 Coastal Rd', floors: 8 },
-      1, 'admin',
     );
 
     expect(building.id).toBeDefined();
@@ -82,8 +81,6 @@ describe('PropertyService — moveIn', () => {
       roomId: 1,
       effectiveFrom: new Date(),
       reasonCode: ReasonCode.MOVE_IN_NEW,
-      actorId: 1,
-      actorRole: 'admin',
     });
 
     expect(occupancy.status).toBe('active');
@@ -99,13 +96,11 @@ describe('PropertyService — moveIn', () => {
     const RID = 200;
     await service.moveIn({
       residentId: RID, roomId: 1, effectiveFrom: new Date(),
-      reasonCode: ReasonCode.MOVE_IN_NEW, actorId: 1, actorRole: 'admin',
-    });
+      reasonCode: ReasonCode.MOVE_IN_NEW,     });
 
     await expect(service.moveIn({
       residentId: RID, roomId: 2, effectiveFrom: new Date(),
-      reasonCode: ReasonCode.TRANSFER, actorId: 1, actorRole: 'admin',
-    })).rejects.toThrow('RESIDENT_ALREADY_HAS_ACTIVE_OCCUPANCY');
+      reasonCode: ReasonCode.TRANSFER,     })).rejects.toThrow('RESIDENT_ALREADY_HAS_ACTIVE_OCCUPANCY');
 
     await teardown(db);
   });
@@ -122,13 +117,11 @@ describe('PropertyService — moveOut', () => {
     const RID = 300;
     await service.moveIn({
       residentId: RID, roomId: 1, effectiveFrom: new Date(),
-      reasonCode: ReasonCode.LEASE_START, actorId: 1, actorRole: 'admin',
-    });
+      reasonCode: ReasonCode.LEASE_START,     });
 
     await service.moveOut({
       residentId: RID, effectiveTo: new Date(),
-      reasonCode: ReasonCode.LEASE_END, actorId: 1, actorRole: 'admin',
-    });
+      reasonCode: ReasonCode.LEASE_END,     });
 
     const active = await service.getActiveOccupancy(RID);
     expect(active).toBeUndefined();
@@ -147,8 +140,6 @@ describe('PropertyService — moveOut', () => {
       residentId: 999999,
       effectiveTo: new Date(),
       reasonCode: ReasonCode.MOVE_OUT_VOLUNTARY,
-      actorId: 1,
-      actorRole: 'admin',
     })).rejects.toThrow('NO_ACTIVE_OCCUPANCY');
 
     await teardown(db);
@@ -181,8 +172,7 @@ describe('PropertyService — getRoomOccupants', () => {
 
     await service.moveIn({
       residentId, roomId, effectiveFrom: new Date(),
-      reasonCode: ReasonCode.MOVE_IN_NEW, actorId: 1, actorRole: 'admin',
-    });
+      reasonCode: ReasonCode.MOVE_IN_NEW,     });
 
     const afterMoveIn = await service.getRoomOccupants(roomId);
     const found = afterMoveIn.find(o => o.resident.id === residentId);
@@ -192,8 +182,7 @@ describe('PropertyService — getRoomOccupants', () => {
     // After move-out: resident no longer active in room
     await service.moveOut({
       residentId, effectiveTo: new Date(),
-      reasonCode: ReasonCode.MOVE_OUT_VOLUNTARY, actorId: 1, actorRole: 'admin',
-    });
+      reasonCode: ReasonCode.MOVE_OUT_VOLUNTARY,     });
 
     const afterMoveOut = await service.getRoomOccupants(roomId);
     const foundAfter = afterMoveOut.find(o => o.resident.id === residentId);
