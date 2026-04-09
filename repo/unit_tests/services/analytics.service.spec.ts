@@ -16,14 +16,18 @@ import { AnomalyService } from '../../src/app/core/services/anomaly.service';
 import { AuthService } from '../../src/app/core/services/auth.service';
 import { CryptoService } from '../../src/app/core/services/crypto.service';
 
-function setup() {
+async function setup() {
   TestBed.configureTestingModule({
     imports: [RouterTestingModule],
     providers: [AnalyticsService, DbService, AuditService, AnomalyService, AuthService, CryptoService],
   });
+  const db = TestBed.inject(DbService);
+  await db.open();
+  await new Promise(r => setTimeout(r, 150));
+  await TestBed.inject(AuthService).selectRole('admin', 'harborpoint2024');
   return {
     service: TestBed.inject(AnalyticsService),
-    db:      TestBed.inject(DbService),
+    db,
   };
 }
 
@@ -38,8 +42,7 @@ function teardown() {
 describe('AnalyticsService — getSummaryStats', () => {
 
   it('returns correct active resident count', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.residents.clear();
     await db.residents.bulkAdd([
@@ -56,8 +59,7 @@ describe('AnalyticsService — getSummaryStats', () => {
   });
 
   it('counts messages this week', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.messages.clear();
     const now = new Date();
@@ -81,8 +83,7 @@ describe('AnalyticsService — getSummaryStats', () => {
 describe('AnalyticsService — getOccupancyByBuilding', () => {
 
   it('calculates occupancy rate per building', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.buildings.clear();
     await db.units.clear();
@@ -120,8 +121,7 @@ describe('AnalyticsService — getOccupancyByBuilding', () => {
   });
 
   it('returns 0% for buildings with no occupancies', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.buildings.clear();
     await db.units.clear();
@@ -155,8 +155,7 @@ describe('AnalyticsService — getOccupancyByBuilding', () => {
 describe('AnalyticsService — getCompliancePipeline', () => {
 
   it('counts pending, approved, and rejected docs', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.documents.clear();
     const base = {
@@ -188,8 +187,7 @@ describe('AnalyticsService — getCompliancePipeline', () => {
 describe('AnalyticsService — getMessagingActivity', () => {
 
   it('returns daily breakdown of direct and announcement messages', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.messages.clear();
     const today = new Date();
@@ -215,8 +213,7 @@ describe('AnalyticsService — getMessagingActivity', () => {
 describe('AnalyticsService — compareBuildingMetric', () => {
 
   it('returns correct winner for occupancy comparison', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.buildings.clear();
     await db.units.clear();
@@ -245,8 +242,7 @@ describe('AnalyticsService — compareBuildingMetric', () => {
   });
 
   it('returns tie when both metrics are equal', async () => {
-    const { service, db } = setup();
-    await db.open();
+    const { service, db } = await setup();
 
     await db.buildings.clear();
     await db.units.clear();

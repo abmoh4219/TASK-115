@@ -13,6 +13,7 @@ import { AuthService, UserRole } from './core/services/auth.service';
 import { MessagingService } from './core/services/messaging.service';
 import { AnomalyService, AnomalyEvent } from './core/services/anomaly.service';
 import { ThemeService } from './core/services/theme.service';
+import { ResidentService } from './core/services/resident.service';
 import { ToastComponent } from './shared/components/toast/toast.component';
 import { BadgeComponent } from './shared/components/badge/badge.component';
 import { ModalComponent } from './shared/components/modal/modal.component';
@@ -393,6 +394,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private messaging: MessagingService,
     private anomaly:   AnomalyService,
     private themeService: ThemeService,
+    private residentService: ResidentService,
   ) {}
 
   ngOnInit(): void {
@@ -405,6 +407,11 @@ export class AppComponent implements OnInit, OnDestroy {
         const wasLoggedIn = this.currentRole !== null;
         this.currentRole = state.role;
         this.loadUnreadCount();
+
+        // On fresh login: repair any plaintext encryptedId values from seed data
+        if (!wasLoggedIn && state.isLoggedIn && state.role) {
+          this.residentService.repairPlaintextIds().catch(() => {/* best-effort */});
+        }
 
         if (wasLoggedIn && (state.isLocked || !state.isLoggedIn)) {
           this.router.navigate(['/login']);

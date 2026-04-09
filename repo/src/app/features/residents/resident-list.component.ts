@@ -4,6 +4,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -598,6 +599,7 @@ export class ResidentListComponent implements OnInit, AfterViewInit {
     private auth:  AuthService,
     private toast: ToastService,
     private cdr:   ChangeDetectorRef,
+    private route: ActivatedRoute,
   ) {}
 
   // --------------------------------------------------
@@ -605,7 +607,15 @@ export class ResidentListComponent implements OnInit, AfterViewInit {
   // --------------------------------------------------
 
   ngOnInit(): void {
-    this.loadData();
+    this.loadData().then(() => {
+      // Handle deep-link from search results
+      const openId = this.route.snapshot.queryParamMap.get('openId');
+      if (openId) {
+        this.selectedResidentId = Number(openId);
+        this.drawerOpen = true;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   ngAfterViewInit(): void {

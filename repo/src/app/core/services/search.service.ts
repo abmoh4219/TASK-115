@@ -72,6 +72,7 @@ export class SearchService {
       this.field('tags',     { boost:  3 });
       this.field('category', { boost:  2 });
       this.field('building');
+      this.field('metadata', { boost: 1 });
       this.ref('id');
 
       for (const entry of entries) {
@@ -82,6 +83,7 @@ export class SearchService {
           tags:     (entry.tags ?? []).join(' '),
           category: entry.category ?? '',
           building: entry.building ?? '',
+          metadata: SearchService.normalizeMetadata(entry.metadata),
         });
       }
     });
@@ -380,6 +382,18 @@ export class SearchService {
   // --------------------------------------------------
   // Private helpers
   // --------------------------------------------------
+
+  /**
+   * Flatten a metadata object into a searchable string.
+   * Converts all values to strings, joins with spaces.
+   */
+  static normalizeMetadata(metadata: Record<string, unknown> | undefined): string {
+    if (!metadata) return '';
+    return Object.entries(metadata)
+      .filter(([, v]) => v != null)
+      .map(([k, v]) => `${k} ${String(v)}`)
+      .join(' ');
+  }
 
   private _safeSearch(query: string): import('lunr').Index.Result[] {
     if (!this._lunrIndex) return [];

@@ -788,7 +788,7 @@ export class SearchComponent implements OnInit, OnDestroy {
         this.router.navigate(['/messages'], { queryParams: { threadId: id } });
         break;
       case 'document':
-        this.router.navigate(['/residents'], { queryParams: { openId: id, tab: 'documents' } });
+        this.router.navigate(['/documents'], { queryParams: { highlightId: id } });
         break;
       default:
         this.router.navigate(['/search']);

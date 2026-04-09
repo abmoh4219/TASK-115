@@ -279,6 +279,28 @@ export class DbService extends Dexie {
     this.on('ready', () => this.seedIfEmpty());
   }
 
+  /**
+   * Encrypt a plaintext string using AES-GCM with a one-time key.
+   * Returns the value in ciphertext.iv format (base64-encoded).
+   */
+  private async encryptSeedId(plaintext: string): Promise<string> {
+    const key = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 }, false, ['encrypt'],
+    );
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const ciphertextBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv }, key, enc.encode(plaintext),
+    );
+    const toBase64 = (buf: ArrayBuffer | Uint8Array) => {
+      const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    };
+    return `${toBase64(ciphertextBuf)}.${toBase64(iv)}`;
+  }
+
   private async seedIfEmpty(): Promise<void> {
     const buildingCount = await this.buildings.count();
     if (buildingCount > 0) return;
@@ -322,12 +344,20 @@ export class DbService extends Dexie {
     ]);
 
     // --- Demo Residents (one per role) ---
+    // Encrypt resident IDs at rest using AES-GCM
+    const [encAdminId, encResidentId, encComplianceId, encAnalystId] = await Promise.all([
+      this.encryptSeedId(`res-seed-admin-${Date.now()}`),
+      this.encryptSeedId(`res-seed-resident-${Date.now()}`),
+      this.encryptSeedId(`res-seed-compliance-${Date.now()}`),
+      this.encryptSeedId(`res-seed-analyst-${Date.now()}`),
+    ]);
+
     await this.residents.bulkAdd([
       {
         firstName: 'Admin', lastName: 'User',
         email: 'admin@harborpoint.local', phone: '555-0001',
         dateOfBirth: new Date('1980-01-01'), status: 'active',
-        encryptedId: 'demo-admin-id',
+        encryptedId: encAdminId,
         notes: [], consentGiven: false,
         createdAt: now, updatedAt: now,
       },
@@ -335,7 +365,7 @@ export class DbService extends Dexie {
         firstName: 'Resident', lastName: 'User',
         email: 'resident@harborpoint.local', phone: '555-0002',
         dateOfBirth: new Date('1990-06-15'), status: 'active',
-        encryptedId: 'demo-resident-id',
+        encryptedId: encResidentId,
         notes: [], consentGiven: false,
         createdAt: now, updatedAt: now,
       },
@@ -343,7 +373,7 @@ export class DbService extends Dexie {
         firstName: 'Compliance', lastName: 'Reviewer',
         email: 'compliance@harborpoint.local', phone: '555-0003',
         dateOfBirth: new Date('1985-03-20'), status: 'active',
-        encryptedId: 'demo-compliance-id',
+        encryptedId: encComplianceId,
         notes: [], consentGiven: false,
         createdAt: now, updatedAt: now,
       },
@@ -351,7 +381,7 @@ export class DbService extends Dexie {
         firstName: 'Analyst', lastName: 'User',
         email: 'analyst@harborpoint.local', phone: '555-0004',
         dateOfBirth: new Date('1988-09-10'), status: 'active',
-        encryptedId: 'demo-analyst-id',
+        encryptedId: encAnalystId,
         notes: [], consentGiven: false,
         createdAt: now, updatedAt: now,
       },

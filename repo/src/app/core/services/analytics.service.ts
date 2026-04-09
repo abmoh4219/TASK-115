@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DbService, Building, Occupancy, Enrollment, Message, AuditLog } from './db.service';
+import { AuthService } from './auth.service';
 
 // =====================================================
 // Types
@@ -76,13 +77,24 @@ export interface CompareResult {
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
 
-  constructor(private db: DbService) {}
+  constructor(
+    private db: DbService,
+    private authService: AuthService,
+  ) {}
+
+  private requireRole(...allowedRoles: string[]): void {
+    const current = this.authService.getCurrentRole();
+    if (!current || !allowedRoles.includes(current)) {
+      throw new Error(`Unauthorized: requires role ${allowedRoles.join(' or ')}`);
+    }
+  }
 
   // --------------------------------------------------
   // Summary Stats
   // --------------------------------------------------
 
   async getSummaryStats(): Promise<SummaryStats> {
+    this.requireRole('admin', 'analyst');
     const now = new Date();
 
     // Active residents — current vs last month
@@ -149,6 +161,7 @@ export class AnalyticsService {
   // --------------------------------------------------
 
   async getOccupancyByBuilding(): Promise<BuildingOccupancy[]> {
+    this.requireRole('admin', 'analyst');
     const buildings  = await this.db.buildings.toArray();
     const units      = await this.db.units.toArray();
     const rooms      = await this.db.rooms.toArray();
@@ -179,6 +192,7 @@ export class AnalyticsService {
   // --------------------------------------------------
 
   async getEnrollmentTrends(weeks = 8): Promise<WeeklyEnrollment[]> {
+    this.requireRole('admin', 'analyst');
     const now = new Date();
     const enrollments = await this.db.enrollments.toArray();
     const result: WeeklyEnrollment[] = [];
@@ -209,6 +223,7 @@ export class AnalyticsService {
   // --------------------------------------------------
 
   async getCourseEnrollmentStats(): Promise<CourseEnrollmentStat[]> {
+    this.requireRole('admin', 'analyst');
     const courses     = await this.db.courses.toArray();
     const enrollments = await this.db.enrollments.toArray();
 
@@ -235,6 +250,7 @@ export class AnalyticsService {
   // --------------------------------------------------
 
   async getCompliancePipeline(): Promise<CompliancePipeline> {
+    this.requireRole('admin', 'analyst');
     const docs = await this.db.documents.toArray();
     const visible = docs.filter(d => !d.hidden);
 
@@ -278,6 +294,7 @@ export class AnalyticsService {
   // --------------------------------------------------
 
   async getMessagingActivity(days = 14): Promise<DailyMessaging[]> {
+    this.requireRole('admin', 'analyst');
     const now = new Date();
     const messages = await this.db.messages.toArray();
     const result: DailyMessaging[] = [];
@@ -309,6 +326,7 @@ export class AnalyticsService {
     buildingIdB: number,
     metric: string,
   ): Promise<CompareResult> {
+    this.requireRole('admin', 'analyst');
     const buildings = await this.db.buildings.toArray();
     const nameA = buildings.find(b => b.id === buildingIdA)?.name ?? `Building ${buildingIdA}`;
     const nameB = buildings.find(b => b.id === buildingIdB)?.name ?? `Building ${buildingIdB}`;
@@ -355,6 +373,7 @@ export class AnalyticsService {
     fromB: Date, toB: Date,
     metric: string,
   ): Promise<CompareResult> {
+    this.requireRole('admin', 'analyst');
     const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const labelA = `${fmtDate(fromA)} – ${fmtDate(toA)}`;
     const labelB = `${fmtDate(fromB)} – ${fmtDate(toB)}`;

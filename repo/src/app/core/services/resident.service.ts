@@ -304,6 +304,37 @@ export class ResidentService {
   }
 
   // --------------------------------------------------
+  // repairPlaintextIds — encrypts any seed/legacy
+  // plaintext encryptedId values using the session key
+  // --------------------------------------------------
+
+  async repairPlaintextIds(): Promise<number> {
+    const key = this.crypto.getSessionKey();
+    if (!key) return 0;
+    const all = await this.db.residents.toArray();
+    let repaired = 0;
+    for (const r of all) {
+      if (!this.isEncryptedFormat(r.encryptedId)) {
+        const rawId = `res-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        const { ciphertext, iv } = await this.crypto.encryptRaw(rawId, key);
+        await this.db.residents.update(r.id!, { encryptedId: `${ciphertext}.${iv}` });
+        repaired++;
+      }
+    }
+    return repaired;
+  }
+
+  private isEncryptedFormat(value: string): boolean {
+    const dotIdx = value.indexOf('.');
+    if (dotIdx <= 0 || dotIdx >= value.length - 1) return false;
+    const left = value.slice(0, dotIdx);
+    const right = value.slice(dotIdx + 1);
+    // Both parts must be valid base64
+    const b64re = /^[A-Za-z0-9+/]+=*$/;
+    return b64re.test(left) && b64re.test(right);
+  }
+
+  // --------------------------------------------------
   // searchResidents — simple in-memory text search
   // (Phase 7 will wire this into the full search index)
   // --------------------------------------------------
