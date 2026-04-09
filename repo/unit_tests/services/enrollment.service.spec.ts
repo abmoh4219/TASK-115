@@ -16,11 +16,12 @@ import { AnomalyService } from '../../src/app/core/services/anomaly.service';
 import { AuthService } from '../../src/app/core/services/auth.service';
 import { CryptoService } from '../../src/app/core/services/crypto.service';
 import { LoggerService } from '../../src/app/core/services/logger.service';
+import { SearchService } from '../../src/app/core/services/search.service';
 
 async function setup() {
   TestBed.configureTestingModule({
     imports: [RouterTestingModule],
-    providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
+    providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService, SearchService],
   });
   const db = TestBed.inject(DbService);
   await db.open();

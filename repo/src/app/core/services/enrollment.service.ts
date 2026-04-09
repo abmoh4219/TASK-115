@@ -3,6 +3,7 @@ import { DbService, CourseRound, Enrollment, EnrollmentHistory, Course, CoursePr
 import { AuditAction, AuditService } from './audit.service';
 import { AuthService } from './auth.service';
 import { AnomalyService } from './anomaly.service';
+import { SearchService } from './search.service';
 import DOMPurify from 'dompurify';
 
 export type EnrollmentResult =
@@ -34,6 +35,7 @@ export class EnrollmentService {
     private audit:       AuditService,
     private authService: AuthService,
     private anomaly:     AnomalyService,
+    private searchService: SearchService,
   ) {}
 
   private requireRole(...allowedRoles: string[]): void {
@@ -66,7 +68,21 @@ export class EnrollmentService {
       createdAt:     now,
       updatedAt:     now,
     });
-    return (await this.db.courses.get(id))!;
+    const course = (await this.db.courses.get(id))!;
+
+    // Index for full-text search
+    this.searchService.reindexEntity({
+      entityType: 'course',
+      entityId: id,
+      title: course.title,
+      body: course.description,
+      tags: ['course', course.category],
+      metadata: {},
+      category: 'course',
+      createdAt: now,
+    }).catch(() => {/* best-effort */});
+
+    return course;
   }
 
   // --------------------------------------------------

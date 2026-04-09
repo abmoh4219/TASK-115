@@ -17,6 +17,9 @@ import { CryptoService } from '../src/app/core/services/crypto.service';
 import { PropertyService } from '../src/app/core/services/property.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { LoggerService } from '../src/app/core/services/logger.service';
+import { SearchService } from '../src/app/core/services/search.service';
+import { AnomalyService } from '../src/app/core/services/anomaly.service';
+import { ContentPolicyService } from '../src/app/core/services/content-policy.service';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -27,6 +30,7 @@ async function setup() {
     providers: [
       DocumentService, ResidentService, DbService,
       AuditService, CryptoService, PropertyService, AuthService, LoggerService,
+      SearchService, AnomalyService, ContentPolicyService,
     ],
   });
   const db = TestBed.inject(DbService);

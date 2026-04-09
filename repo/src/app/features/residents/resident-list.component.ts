@@ -200,6 +200,7 @@ import { MoveOutModalComponent, MoveOutPayload } from '../property/move-out-moda
       <app-move-in-modal
         [open]="moveInOpen"
         [room]="moveInRoom"
+        [availableRooms]="moveInRooms"
         [availableResidents]="moveInResidents"
         [saving]="movingSaving"
         (confirmed)="confirmMoveIn($event)"
@@ -561,6 +562,7 @@ export class ResidentListComponent implements OnInit, AfterViewInit {
 
   moveInOpen      = false;
   moveInRoom:     Room | null = null;
+  moveInRooms:    Room[] = [];
   moveInResidents: Resident[] = [];
   movingSaving    = false;
   private pendingMoveInResident: Resident | null = null;
@@ -752,11 +754,13 @@ export class ResidentListComponent implements OnInit, AfterViewInit {
     this.applyFilters();
   }
 
-  onMoveInFromDrawer(resident: Resident): void {
+  async onMoveInFromDrawer(resident: Resident): Promise<void> {
     this.pendingMoveInResident = resident;
-    // For move-in from drawer: no specific room context; open modal without a room
+    // For move-in from drawer: no specific room context; load available rooms for selection
     this.moveInRoom       = null;
     this.moveInResidents  = [resident];
+    // Load all rooms so the user can select one
+    this.moveInRooms      = await this.db.rooms.toArray();
     this.moveInOpen       = true;
     this.cdr.markForCheck();
   }
@@ -780,12 +784,17 @@ export class ResidentListComponent implements OnInit, AfterViewInit {
   // --------------------------------------------------
 
   async confirmMoveIn(payload: MoveInPayload): Promise<void> {
+    const roomId = this.moveInRoom?.id ?? payload.roomId;
+    if (!roomId) {
+      this.toast.show('Please select a room before confirming move-in', 'error');
+      return;
+    }
     this.movingSaving = true;
     this.cdr.markForCheck();
     try {
       await this.propertyService.moveIn({
         residentId:   payload.residentId,
-        roomId:       (this.moveInRoom?.id ?? 1) as number,
+        roomId:       roomId as number,
         effectiveFrom: payload.effectiveFrom,
         reasonCode:   payload.reasonCode as ReasonCode,
         actorId:      0,

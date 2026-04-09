@@ -421,6 +421,34 @@ export class DbService extends Dexie {
       createdAt: now,
       updatedAt: now,
     });
+
+    // --- Seed Search Index from entities ---
+    const allResidents = await this.residents.toArray();
+    for (const r of allResidents) {
+      await this.searchIndex.add({
+        entityType: 'resident',
+        entityId: r.id!,
+        title: `${r.firstName} ${r.lastName}`,
+        body: `${r.email} ${r.phone} ${r.status}`,
+        tags: ['resident', r.status],
+        metadata: {},
+        category: 'resident',
+        createdAt: r.createdAt,
+      });
+    }
+    const allCourses = await this.courses.toArray();
+    for (const c of allCourses) {
+      await this.searchIndex.add({
+        entityType: 'course',
+        entityId: c.id!,
+        title: c.title,
+        body: c.description,
+        tags: ['course', c.category],
+        metadata: {},
+        category: 'course',
+        createdAt: c.createdAt,
+      });
+    }
   }
 
   // =====================================================

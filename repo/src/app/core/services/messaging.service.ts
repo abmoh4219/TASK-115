@@ -4,6 +4,7 @@ import { AuditAction, AuditService } from './audit.service';
 import { AuthService } from './auth.service';
 import { CryptoService } from './crypto.service';
 import { ContentPolicyService } from './content-policy.service';
+import { SearchService } from './search.service';
 import DOMPurify from 'dompurify';
 
 // =====================================================
@@ -35,6 +36,7 @@ export class MessagingService {
     private auth:          AuthService,
     private crypto:        CryptoService,
     private contentPolicy: ContentPolicyService,
+    private searchService: SearchService,
   ) {}
 
   private requireRole(...allowedRoles: string[]): void {
@@ -193,6 +195,20 @@ export class MessagingService {
     this.audit.log(AuditAction.MESSAGE_SENT, senderId, senderRole, 'message', id);
 
     const msg = await this.db.messages.get(id);
+
+    // Index for full-text search
+    const thread = await this.db.threads.get(params.threadId);
+    this.searchService.reindexEntity({
+      entityType: 'message',
+      entityId: id,
+      title: thread?.subject ?? 'Message',
+      body: masked,
+      tags: ['message', params.type],
+      metadata: { threadId: params.threadId, senderRole },
+      category: 'message',
+      createdAt: new Date(),
+    }).catch(() => {/* best-effort */});
+
     return msg!;
   }
 

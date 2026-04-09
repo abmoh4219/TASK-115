@@ -4,6 +4,7 @@ import { AuditAction, AuditService } from './audit.service';
 import { AuthService } from './auth.service';
 import { CryptoService } from './crypto.service';
 import { ContentPolicyService } from './content-policy.service';
+import { SearchService } from './search.service';
 import DOMPurify from 'dompurify';
 
 // =====================================================
@@ -39,6 +40,7 @@ export class DocumentService {
     private authService:   AuthService,
     private crypto:        CryptoService,
     private contentPolicy: ContentPolicyService,
+    private searchService: SearchService,
   ) {}
 
   private requireRole(...allowedRoles: string[]): void {
@@ -179,6 +181,18 @@ export class DocumentService {
         fileHash: '[ENCRYPTED]',
       },
     );
+
+    // Index for full-text search
+    this.searchService.reindexEntity({
+      entityType: 'document',
+      entityId: id,
+      title: doc!.fileName,
+      body: `pending_review`,
+      tags: ['document', 'pending_review'],
+      metadata: { mimeType: doc!.mimeType, sizeBytes: doc!.sizeBytes },
+      category: 'document',
+      createdAt: now,
+    }).catch(() => {/* best-effort */});
 
     return doc!;
   }

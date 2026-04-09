@@ -3,6 +3,7 @@ import { DbService, Resident, AuditLog } from './db.service';
 import { AuditAction, AuditService } from './audit.service';
 import { AuthService } from './auth.service';
 import { CryptoService } from './crypto.service';
+import { SearchService } from './search.service';
 import DOMPurify from 'dompurify';
 
 // =====================================================
@@ -36,6 +37,7 @@ export class ResidentService {
     private audit:       AuditService,
     private authService: AuthService,
     private crypto:      CryptoService,
+    private searchService: SearchService,
   ) {}
 
   private requireRole(...allowedRoles: string[]): void {
@@ -180,6 +182,18 @@ export class ResidentService {
       { ...resident, encryptedId: '[ENCRYPTED]' },
     );
 
+    // Index for full-text search
+    this.searchService.reindexEntity({
+      entityType: 'resident',
+      entityId: id,
+      title: `${resident!.firstName} ${resident!.lastName}`,
+      body: `${resident!.email} ${resident!.phone} ${resident!.status}`,
+      tags: ['resident', resident!.status],
+      metadata: {},
+      category: 'resident',
+      createdAt: new Date(),
+    }).catch(() => {/* search indexing is best-effort */});
+
     return resident!;
   }
 
@@ -246,6 +260,18 @@ export class ResidentService {
       { ...after,  encryptedId: '[ENCRYPTED]' },
     );
 
+    // Update search index
+    this.searchService.reindexEntity({
+      entityType: 'resident',
+      entityId: id,
+      title: `${after!.firstName} ${after!.lastName}`,
+      body: `${after!.email} ${after!.phone} ${after!.status}`,
+      tags: ['resident', after!.status],
+      metadata: {},
+      category: 'resident',
+      createdAt: after!.createdAt,
+    }).catch(() => {/* search indexing is best-effort */});
+
     return { resident: after!, warnings };
   }
 
@@ -261,6 +287,20 @@ export class ResidentService {
     return logs.sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
+  }
+
+  // --------------------------------------------------
+  // getMyProfile — resident-safe self-profile retrieval
+  // bound to the authenticated session user ID
+  // --------------------------------------------------
+
+  async getMyProfile(): Promise<Resident | undefined> {
+    const currentUserId = this.authService.getCurrentUserId();
+    if (!currentUserId) throw new Error('Unauthorized: not authenticated');
+    const role = this.authService.getCurrentRole();
+    const resident = await this.db.residents.get(currentUserId);
+    if (resident) await this.decryptConfidentialNotes(resident, role ?? undefined);
+    return resident;
   }
 
   // --------------------------------------------------

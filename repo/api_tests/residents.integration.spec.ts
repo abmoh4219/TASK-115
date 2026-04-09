@@ -16,6 +16,8 @@ import { AuditService } from '../src/app/core/services/audit.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { LoggerService } from '../src/app/core/services/logger.service';
+import { SearchService } from '../src/app/core/services/search.service';
+import { AnomalyService } from '../src/app/core/services/anomaly.service';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -23,7 +25,7 @@ import { LoggerService } from '../src/app/core/services/logger.service';
 
 async function setup() {
   TestBed.configureTestingModule({
-    providers: [ResidentService, PropertyService, DbService, AuditService, CryptoService, AuthService, LoggerService],
+    providers: [ResidentService, PropertyService, DbService, AuditService, CryptoService, AuthService, LoggerService, SearchService, AnomalyService],
   });
   const db = TestBed.inject(DbService);
   await db.open();

@@ -646,12 +646,9 @@ export class MyProfileComponent implements OnInit {
     this.loading = true;
     this.cdr.markForCheck();
     try {
-      // For the resident role: find the resident matching the current session
-      // Since auth uses role-based login (not individual accounts), we show the
-      // first active resident as a demo placeholder. In a real system, the
-      // resident ID would be stored on the auth session.
-      const all = await this.residentService.getResidents({ status: ['active'] });
-      this.resident = all[0] ?? null;
+      // Retrieve the resident profile bound to the authenticated session user
+      const profile = await this.residentService.getMyProfile();
+      this.resident = profile ?? null;
 
       if (this.resident?.id != null) {
         const activeOcc = await this.propertyService.getActiveOccupancy(this.resident.id);

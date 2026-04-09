@@ -51,6 +51,14 @@ export class SearchService {
    * Call this once after DB is populated, and whenever entries change.
    */
   async buildIndex(): Promise<void> {
+    // Auto-populate index from real entities if no business entries exist
+    const businessEntries = await this.db.searchIndex
+      .filter(e => e.entityType !== '_trending')
+      .count();
+    if (businessEntries === 0) {
+      await this.rebuildAllEntities();
+    }
+
     // Exclude internal _trending entries from the search index
     this._indexedEntries = await this.db.searchIndex
       .filter(e => e.entityType !== '_trending')
@@ -261,12 +269,112 @@ export class SearchService {
     this._lunrIndex = null; // mark stale
   }
 
+  /**
+   * Upsert a single entity in the search index: removes any existing
+   * entry for (entityType, entityId) then inserts the new one.
+   */
+  async reindexEntity(entry: Omit<SearchIndexEntry, 'id'>): Promise<void> {
+    await this.removeFromIndex(entry.entityType, entry.entityId);
+    await this.indexEntity(entry);
+  }
+
   async removeFromIndex(entityType: string, entityId: number | string): Promise<void> {
     const existing = await this.db.searchIndex
       .filter(e => e.entityType === entityType && e.entityId === entityId)
       .toArray();
     await Promise.all(existing.map(e => this.db.searchIndex.delete(e.id!)));
     this._lunrIndex = null;
+  }
+
+  // --------------------------------------------------
+  // Bulk rebuild — indexes all business entities from DB
+  // --------------------------------------------------
+
+  async rebuildAllEntities(): Promise<void> {
+    const now = new Date();
+
+    // Residents
+    const residents = await this.db.residents.toArray();
+    for (const r of residents) {
+      const existing = await this.db.searchIndex
+        .filter(e => e.entityType === 'resident' && e.entityId === r.id!)
+        .first();
+      if (!existing) {
+        await this.db.searchIndex.add({
+          entityType: 'resident',
+          entityId: r.id!,
+          title: `${r.firstName} ${r.lastName}`,
+          body: `${r.email} ${r.phone} ${r.status}`,
+          tags: ['resident', r.status],
+          metadata: {},
+          category: 'resident',
+          createdAt: r.createdAt ?? now,
+        });
+      }
+    }
+
+    // Documents
+    const documents = await this.db.documents.toArray();
+    for (const d of documents) {
+      const existing = await this.db.searchIndex
+        .filter(e => e.entityType === 'document' && e.entityId === d.id!)
+        .first();
+      if (!existing) {
+        await this.db.searchIndex.add({
+          entityType: 'document',
+          entityId: d.id!,
+          title: d.fileName,
+          body: `${d.status} ${d.reviewNotes ?? ''}`,
+          tags: ['document', d.status],
+          metadata: { mimeType: d.mimeType, sizeBytes: d.sizeBytes },
+          category: 'document',
+          createdAt: d.createdAt ?? now,
+        });
+      }
+    }
+
+    // Messages (non-deleted)
+    const messages = await this.db.messages.filter(m => !m.deleted).toArray();
+    for (const m of messages) {
+      const existing = await this.db.searchIndex
+        .filter(e => e.entityType === 'message' && e.entityId === m.id!)
+        .first();
+      if (!existing) {
+        const thread = await this.db.threads.get(m.threadId);
+        await this.db.searchIndex.add({
+          entityType: 'message',
+          entityId: m.id!,
+          title: thread?.subject ?? 'Message',
+          body: m.body,
+          tags: ['message', m.type],
+          metadata: { threadId: m.threadId, senderRole: m.senderRole },
+          category: 'message',
+          createdAt: m.createdAt ?? now,
+        });
+      }
+    }
+
+    // Courses
+    const courses = await this.db.courses.toArray();
+    for (const c of courses) {
+      const existing = await this.db.searchIndex
+        .filter(e => e.entityType === 'course' && e.entityId === c.id!)
+        .first();
+      if (!existing) {
+        await this.db.searchIndex.add({
+          entityType: 'course',
+          entityId: c.id!,
+          title: c.title,
+          body: c.description,
+          tags: ['course', c.category],
+          metadata: {},
+          category: 'course',
+          createdAt: c.createdAt ?? now,
+        });
+      }
+    }
+
+    this._lunrIndex = null; // mark stale so next search rebuilds Lunr
   }
 
   // --------------------------------------------------

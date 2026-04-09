@@ -14,6 +14,7 @@ export interface MoveInPayload {
   residentId: number;
   reasonCode: string;
   effectiveFrom: Date;
+  roomId?: number;
 }
 
 @Component({
@@ -27,13 +28,13 @@ export interface MoveInPayload {
       confirmLabel="Confirm Move In"
       size="md"
       [loading]="saving"
-      [confirmDisabled]="form.invalid || !form.get('residentId')?.value"
+      [confirmDisabled]="form.invalid || !form.get('residentId')?.value || (!room && !form.get('roomId')?.value)"
       (confirmed)="onConfirm()"
       (cancelled)="cancelled.emit()"
     >
       <div class="move-in-body" [formGroup]="form">
 
-        <!-- Room info banner -->
+        <!-- Room info banner (when room is pre-selected) -->
         <div class="room-banner" *ngIf="room">
           <div class="room-banner__icon-wrap">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -46,6 +47,18 @@ export interface MoveInPayload {
             <p class="room-banner__label">Moving into</p>
             <p class="room-banner__value">Room {{ room.roomNumber }}&ensp;·&ensp;Capacity {{ room.capacity }}</p>
           </div>
+        </div>
+
+        <!-- Room selection (when no room is pre-selected) -->
+        <div class="field-block" *ngIf="!room">
+          <app-select
+            label="Select Room"
+            formControlName="roomId"
+            placeholder="Choose a room..."
+            [required]="true"
+            [options]="roomOptions"
+            [errorMessage]="form.get('roomId')?.touched && form.get('roomId')?.invalid ? 'Please select a room' : ''"
+          ></app-select>
         </div>
 
         <!-- Resident select -->
@@ -217,6 +230,7 @@ export class MoveInModalComponent implements OnChanges {
 
   @Input() open = false;
   @Input() room: Room | null = null;
+  @Input() availableRooms: Room[] = [];
   @Input() availableResidents: Resident[] = [];
   @Input() saving = false;
 
@@ -235,6 +249,7 @@ export class MoveInModalComponent implements OnChanges {
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({
       residentId:   [null,                    Validators.required],
+      roomId:       [null],
       reasonCode:   [ReasonCode.MOVE_IN_NEW,  Validators.required],
       effectiveFrom: [this.todayStr(),         Validators.required],
     });
@@ -244,10 +259,26 @@ export class MoveInModalComponent implements OnChanges {
     if (changes['open'] && this.open) {
       this.form.reset({
         residentId:    null,
+        roomId:        null,
         reasonCode:    ReasonCode.MOVE_IN_NEW,
         effectiveFrom: this.todayStr(),
       });
+      // Require room selection when no room is pre-set
+      const roomCtrl = this.form.get('roomId');
+      if (!this.room) {
+        roomCtrl?.setValidators(Validators.required);
+      } else {
+        roomCtrl?.clearValidators();
+      }
+      roomCtrl?.updateValueAndValidity();
     }
+  }
+
+  get roomOptions(): SelectOption[] {
+    return this.availableRooms.map(r => ({
+      value: r.id!,
+      label: `Room ${r.roomNumber} (capacity ${r.capacity})`,
+    }));
   }
 
   get residentOptions(): SelectOption[] {
@@ -264,11 +295,12 @@ export class MoveInModalComponent implements OnChanges {
 
   onConfirm(): void {
     if (this.form.invalid) return;
-    const { residentId, reasonCode, effectiveFrom } = this.form.value;
+    const { residentId, roomId, reasonCode, effectiveFrom } = this.form.value;
     this.confirmed.emit({
       residentId:    Number(residentId),
       reasonCode:    reasonCode as string,
       effectiveFrom: new Date(effectiveFrom as string),
+      roomId:        roomId ? Number(roomId) : undefined,
     });
   }
 

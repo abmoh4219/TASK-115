@@ -12,6 +12,9 @@ import { AuditService } from '../src/app/core/services/audit.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
 import { LoggerService } from '../src/app/core/services/logger.service';
+import { SearchService } from '../src/app/core/services/search.service';
+import { AnomalyService } from '../src/app/core/services/anomaly.service';
+import { ContentPolicyService } from '../src/app/core/services/content-policy.service';
 
 describe('Messaging Integration — thread & message flow', () => {
   let service: MessagingService;
@@ -20,7 +23,7 @@ describe('Messaging Integration — thread & message flow', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService, SearchService, AnomalyService, ContentPolicyService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
@@ -110,7 +113,7 @@ describe('Messaging Integration — admin thread visibility', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService, SearchService, AnomalyService, ContentPolicyService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
@@ -180,7 +183,7 @@ describe('Messaging Integration — createAnnouncement', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService, SearchService, AnomalyService, ContentPolicyService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);
@@ -233,7 +236,7 @@ describe('Messaging Integration — createTemplate', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService],
+      providers: [MessagingService, DbService, AuditService, AuthService, CryptoService, LoggerService, SearchService, AnomalyService, ContentPolicyService],
     });
     db = TestBed.inject(DbService);
     service = TestBed.inject(MessagingService);

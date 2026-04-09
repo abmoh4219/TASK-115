@@ -33,7 +33,6 @@ Credentials are listed in the README only — they do not appear anywhere in the
 
 ## Local Development (without Docker)
 ```bash
-cd repo
 npm install
 npm start
 ```

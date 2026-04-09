@@ -6,7 +6,7 @@ import { AdminGuard } from './core/guards/admin.guard';
 import { ResidentGuard } from './core/guards/resident.guard';
 import { ComplianceGuard } from './core/guards/compliance.guard';
 import { AnalystGuard } from './core/guards/analyst.guard';
-import { AllRolesGuard, AdminOrComplianceGuard, AdminOrResidentGuard } from './core/guards/multi-role.guard';
+import { AllRolesGuard, AdminOrComplianceGuard, AdminOrResidentGuard, AdminOrAnalystGuard } from './core/guards/multi-role.guard';
 
 // Feature components
 import { RolePickerComponent } from './features/login/role-picker.component';
@@ -46,8 +46,8 @@ export const routes: Routes = [
   // Admin + Resident: enrollment
   { path: 'enrollment',  component: EnrollmentComponent,         canActivate: [AdminOrResidentGuard] },
 
-  // Analyst-only
-  { path: 'analytics',   component: AnalyticsDashboardComponent, canActivate: [AnalystGuard] },
+  // Admin + Analyst: analytics
+  { path: 'analytics',   component: AnalyticsDashboardComponent, canActivate: [AdminOrAnalystGuard] },
 
   // All authenticated roles: messaging, search
   { path: 'messages',    component: MessagingComponent,          canActivate: [AllRolesGuard] },

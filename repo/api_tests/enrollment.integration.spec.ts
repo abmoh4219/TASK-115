@@ -13,6 +13,7 @@ import { AnomalyService } from '../src/app/core/services/anomaly.service';
 import { AuthService } from '../src/app/core/services/auth.service';
 import { CryptoService } from '../src/app/core/services/crypto.service';
 import { LoggerService } from '../src/app/core/services/logger.service';
+import { SearchService } from '../src/app/core/services/search.service';
 
 async function seedTestCourse(db: DbService, options?: {
   capacity?: number;
@@ -81,7 +82,7 @@ describe('Enrollment Integration — happy path', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService, SearchService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -174,7 +175,7 @@ describe('Enrollment Integration — drop rules', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService, SearchService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -272,7 +273,7 @@ describe('Enrollment Integration — course & round management', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService, SearchService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -339,7 +340,7 @@ describe('Enrollment Integration — getEnrollmentHistory', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService, SearchService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
@@ -403,7 +404,7 @@ describe('Enrollment Integration — checkPrerequisites', () => {
   beforeEach(async () => {
     TestBed.configureTestingModule({
       imports: [RouterTestingModule],
-      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService],
+      providers: [EnrollmentService, DbService, AuditService, AnomalyService, AuthService, CryptoService, LoggerService, SearchService],
     });
     db = TestBed.inject(DbService);
     enrollmentService = TestBed.inject(EnrollmentService);
