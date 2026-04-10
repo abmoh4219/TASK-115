@@ -183,16 +183,20 @@ export class DocumentService {
     );
 
     // Index for full-text search
-    this.searchService.reindexEntity({
-      entityType: 'document',
-      entityId: id,
-      title: doc!.fileName,
-      body: `pending_review`,
-      tags: ['document', 'pending_review'],
-      metadata: { mimeType: doc!.mimeType, sizeBytes: doc!.sizeBytes },
-      category: 'document',
-      createdAt: now,
-    }).catch(() => {/* best-effort */});
+    (async () => {
+      const building = await this.searchService.resolveBuildingForResident(residentId);
+      await this.searchService.reindexEntity({
+        entityType: 'document',
+        entityId: id,
+        title: doc!.fileName,
+        body: `pending_review`,
+        tags: ['document', 'pending_review'],
+        metadata: { mimeType: doc!.mimeType, sizeBytes: doc!.sizeBytes },
+        category: 'document',
+        building,
+        createdAt: now,
+      });
+    })().catch(() => {/* best-effort */});
 
     return doc!;
   }

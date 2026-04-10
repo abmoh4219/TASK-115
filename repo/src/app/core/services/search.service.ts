@@ -263,6 +263,28 @@ export class SearchService {
   }
 
   // --------------------------------------------------
+  // Building resolver — walks occupancy → room → unit → building
+  // Returns building name or undefined if not placed.
+  // --------------------------------------------------
+
+  async resolveBuildingForResident(residentId: number): Promise<string | undefined> {
+    try {
+      const occ = await this.db.occupancies
+        .filter(o => o.residentId === residentId && o.status === 'active')
+        .first();
+      if (!occ) return undefined;
+      const room = await this.db.rooms.get(occ.roomId);
+      if (!room) return undefined;
+      const unit = await this.db.units.get(room.unitId);
+      if (!unit) return undefined;
+      const building = await this.db.buildings.get(unit.buildingId);
+      return building?.name;
+    } catch {
+      return undefined;
+    }
+  }
+
+  // --------------------------------------------------
   // Index helpers
   // --------------------------------------------------
 

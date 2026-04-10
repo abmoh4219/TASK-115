@@ -60,33 +60,38 @@ async function teardown(db: DbService) {
 // F-H-01: Encrypted resident IDs
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe('F-H-01 — Encrypted resident IDs', () => {
+describe('F-H-01 — Session-key encrypted resident IDs', () => {
 
-  it('seed data has encrypted encryptedId values (not plaintext)', async () => {
+  it('seed data uses placeholder IDs pending session-key repair', async () => {
     const { db } = await setup();
 
     const residents = await db.residents.toArray();
     expect(residents.length).toBeGreaterThan(0);
-    for (const r of residents) {
-      // Must be in ciphertext.iv base64 format, not plaintext like 'demo-admin-id'
-      expect(r.encryptedId).not.toContain('demo-');
-      const parts = r.encryptedId.split('.');
-      expect(parts.length).toBe(2);
-      expect(parts[0].length).toBeGreaterThan(0);
-      expect(parts[1].length).toBeGreaterThan(0);
-      expect(parts[0]).toMatch(/^[A-Za-z0-9+/=]+$/);
-      expect(parts[1]).toMatch(/^[A-Za-z0-9+/=]+$/);
-    }
+    // Seeded residents have placeholder IDs — these are intentionally non-encrypted
+    // and are repaired to session-key encrypted format on first authenticated login.
+    const placeholders = residents.filter(r => r.encryptedId.startsWith('seed-pending-'));
+    expect(placeholders.length).toBeGreaterThan(0);
 
     await teardown(db);
   });
 
-  it('repairPlaintextIds is no-op when all IDs are already encrypted', async () => {
+  it('repairPlaintextIds converts seeded placeholders to session-key encrypted format', async () => {
     const { residentService, db } = await setup();
 
-    // Seed data is already encrypted, so repair should find nothing
+    // setup() authenticates as admin, so calling repair directly should
+    // encrypt all seed placeholders with the session key.
     const repaired = await residentService.repairPlaintextIds();
-    expect(repaired).toBe(0);
+    expect(repaired).toBeGreaterThan(0);
+
+    // All residents now have session-key encrypted IDs
+    const all = await db.residents.toArray();
+    for (const r of all) {
+      expect(r.encryptedId).toMatch(/^[A-Za-z0-9+/=]+\.[A-Za-z0-9+/=]+$/);
+    }
+
+    // Second call should be a no-op
+    const repaired2 = await residentService.repairPlaintextIds();
+    expect(repaired2).toBe(0);
 
     await teardown(db);
   });

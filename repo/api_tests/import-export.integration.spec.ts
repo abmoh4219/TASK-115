@@ -28,6 +28,18 @@ async function createHpdFile(
   return new File([payloadStr], 'test.hpd', { type: 'application/octet-stream' });
 }
 
+// Helper: build a complete dataset (all 18 collections) with optional overrides.
+// Matches the schema-validation requirement in ImportExportService.importData.
+function makeFullDataset(overrides: Record<string, unknown[]> = {}): Record<string, unknown[]> {
+  return {
+    buildings: [], units: [], rooms: [], occupancies: [], residents: [],
+    documents: [], messages: [], threads: [], enrollments: [], courses: [],
+    courseRounds: [], auditLogs: [], searchIndex: [], searchDictionary: [],
+    consentRecords: [], zeroResultsLog: [], contentPolicies: [], messageTemplates: [],
+    ...overrides,
+  };
+}
+
 describe('Import/Export Integration — round trip', () => {
   let service: ImportExportService;
   let db: DbService;
@@ -61,12 +73,9 @@ describe('Import/Export Integration — round trip', () => {
 
   it('imports data with correct password', async () => {
     const password = 'test-password-123';
-    const data = {
+    const data = makeFullDataset({
       buildings: [{ id: 1, name: 'Test Building', address: '1 Main', floors: 3, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
-      units: [],
-      rooms: [],
-      residents: [],
-    };
+    });
 
     const file = await createHpdFile(cryptoService, data, password);
     const result = await service.importData(file, password, true);
@@ -78,7 +87,7 @@ describe('Import/Export Integration — round trip', () => {
   });
 
   it('rejects import with wrong password', async () => {
-    const data = { buildings: [], units: [], rooms: [], residents: [] };
+    const data = makeFullDataset();
     const file = await createHpdFile(cryptoService, data, 'correct-password');
 
     const result = await service.importData(file, 'wrong-password');
@@ -146,10 +155,9 @@ describe('Import/Export Integration — duplicate modes', () => {
     });
 
     const password = 'test';
-    const data = {
+    const data = makeFullDataset({
       buildings: [{ name: 'New Building', address: 'new', floors: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
-      units: [], rooms: [], residents: [],
-    };
+    });
     const file = await createHpdFile(cryptoService, data, password);
 
     const result = await service.importData(file, password, true);
@@ -167,10 +175,9 @@ describe('Import/Export Integration — duplicate modes', () => {
     });
 
     const password = 'test';
-    const data = {
+    const data = makeFullDataset({
       buildings: [{ name: 'Merged Building', address: 'new', floors: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
-      units: [], rooms: [], residents: [],
-    };
+    });
     const file = await createHpdFile(cryptoService, data, password);
 
     const result = await service.importData(file, password, false);
@@ -215,10 +222,9 @@ describe('Import/Export Integration — prototype pollution guard', () => {
 
   it('strips __proto__ keys from imported data', async () => {
     const password = 'test';
-    const data = {
+    const data = makeFullDataset({
       buildings: [{ name: 'Safe', address: '1 Main', floors: 1, __proto__: { admin: true }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }],
-      units: [], rooms: [], residents: [],
-    };
+    });
     const file = await createHpdFile(cryptoService, data, password);
 
     const result = await service.importData(file, password, true);
@@ -265,7 +271,7 @@ describe('Import/Export Integration — audit trail', () => {
 
   it('writes DATA_IMPORTED audit entry after successful import', async () => {
     const password = 'audit-test';
-    const data = { buildings: [], units: [], rooms: [], residents: [] };
+    const data = makeFullDataset();
     const file = await createHpdFile(cryptoService, data, password);
 
     await service.importData(file, password, false);

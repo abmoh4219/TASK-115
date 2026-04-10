@@ -129,6 +129,7 @@ export class AnomalyService {
   resetSearchTracking(): void { this.reset(); }
 
   private getActorId(): number {
-    return 0; // session-level sentinel; real ID resolved at call-sites in auth-aware contexts
+    // Resolve actor from authenticated session. Fall back to 0 only when no session.
+    return this.auth.getCurrentUserId() ?? 0;
   }
 }

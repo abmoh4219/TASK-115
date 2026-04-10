@@ -183,16 +183,20 @@ export class ResidentService {
     );
 
     // Index for full-text search
-    this.searchService.reindexEntity({
-      entityType: 'resident',
-      entityId: id,
-      title: `${resident!.firstName} ${resident!.lastName}`,
-      body: `${resident!.email} ${resident!.phone} ${resident!.status}`,
-      tags: ['resident', resident!.status],
-      metadata: {},
-      category: 'resident',
-      createdAt: new Date(),
-    }).catch(() => {/* search indexing is best-effort */});
+    (async () => {
+      const building = await this.searchService.resolveBuildingForResident(id);
+      await this.searchService.reindexEntity({
+        entityType: 'resident',
+        entityId: id,
+        title: `${resident!.firstName} ${resident!.lastName}`,
+        body: `${resident!.email} ${resident!.phone} ${resident!.status}`,
+        tags: ['resident', resident!.status],
+        metadata: {},
+        category: 'resident',
+        building,
+        createdAt: new Date(),
+      });
+    })().catch(() => {/* search indexing is best-effort */});
 
     return resident!;
   }
@@ -261,16 +265,20 @@ export class ResidentService {
     );
 
     // Update search index
-    this.searchService.reindexEntity({
-      entityType: 'resident',
-      entityId: id,
-      title: `${after!.firstName} ${after!.lastName}`,
-      body: `${after!.email} ${after!.phone} ${after!.status}`,
-      tags: ['resident', after!.status],
-      metadata: {},
-      category: 'resident',
-      createdAt: after!.createdAt,
-    }).catch(() => {/* search indexing is best-effort */});
+    (async () => {
+      const building = await this.searchService.resolveBuildingForResident(id);
+      await this.searchService.reindexEntity({
+        entityType: 'resident',
+        entityId: id,
+        title: `${after!.firstName} ${after!.lastName}`,
+        body: `${after!.email} ${after!.phone} ${after!.status}`,
+        tags: ['resident', after!.status],
+        metadata: {},
+        category: 'resident',
+        building,
+        createdAt: after!.createdAt,
+      });
+    })().catch(() => {/* search indexing is best-effort */});
 
     return { resident: after!, warnings };
   }
