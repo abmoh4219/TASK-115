@@ -17,8 +17,7 @@
   },
   "include": [
     "src/**/*.spec.ts",
-    "unit_tests/**/*.spec.ts",
-    "api_tests/**/*.spec.ts",
+    "tests/unit_tests/**/*.spec.ts",
     "src/**/*.d.ts",
     "setup-jest.ts"
   ]

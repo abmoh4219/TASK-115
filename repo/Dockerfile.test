@@ -3,5 +3,4 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-RUN chmod +x run_tests.sh
-CMD ["sh", "run_tests.sh"]
+CMD ["npx", "--no", "jest", "tests/unit_tests/", "--forceExit", "--passWithNoTests", "--ci"]

@@ -174,6 +174,8 @@ export class RolePickerComponent implements OnInit {
       } else {
         this.errorMessage = result.error ?? 'Invalid username or password';
       }
+    } catch {
+      this.errorMessage = 'Login failed. Please try again.';
     } finally {
       this.loading = false;
     }

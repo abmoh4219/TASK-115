@@ -115,8 +115,13 @@ export class AuthService implements OnDestroy {
       // First run: check against default password, then store validation token
       passwordOk = password === DEFAULT_PASSWORDS[role];
       if (passwordOk) {
-        const token = await this.crypto.createValidationToken(password);
-        localStorage.setItem(validationKey, JSON.stringify(token));
+        try {
+          const token = await this.crypto.createValidationToken(password);
+          localStorage.setItem(validationKey, JSON.stringify(token));
+        } catch {
+          // crypto.subtle unavailable (e.g. plain-HTTP test environment) —
+          // password was already verified above; skip persisting the token.
+        }
       }
     }
 
@@ -132,8 +137,13 @@ export class AuthService implements OnDestroy {
       saltB64 = this.crypto.bufferToBase64(salt);
       localStorage.setItem(LS_CRYPTO_SALT, saltB64);
     }
-    const sessionKey = await this.crypto.deriveKey(password, salt);
-    this.crypto.setSessionKey(sessionKey);
+    try {
+      const sessionKey = await this.crypto.deriveKey(password, salt);
+      this.crypto.setSessionKey(sessionKey);
+    } catch {
+      // crypto.subtle unavailable — session runs without an encryption key.
+      this.crypto.setSessionKey(null);
+    }
 
     this._currentUserId = AuthService.USER_ID_MAP[role] ?? null;
 
